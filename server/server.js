@@ -27,7 +27,12 @@ connectDB();
 
 // Routes
 // Ensure this path matches your actual route file name
-app.use('/api', apiRoutes); 
+app.use('/api', apiRoutes);
+
+// Health Check Endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'OK', message: 'Server is healthy' });
+});
 
 // 5. Global Error Handler (Must be LAST, after routes)
 app.use(errorHandler);
