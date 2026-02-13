@@ -1,0 +1,393 @@
+import { useEffect, useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import api from '../api/axios';
+import { 
+  Folder, FileText, Plus, Loader2, ArrowLeft, CheckCircle, 
+  MessageSquare, Trash2, UploadCloud, Home, Edit2 
+} from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
+import UploadModal from '../components/UploadModal';
+
+export default function Dashboard() {
+  const { folderId } = useParams();
+  const navigate = useNavigate();
+
+  // Data
+  const [data, setData] = useState({ folders: [], files: [], currentFolder: null });
+  const [loading, setLoading] = useState(true);
+  
+  // State
+  const [creating, setCreating] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  
+  // ADVANCED SELECTION STATE
+  const [selectedItems, setSelectedItems] = useState([]); 
+  const [lastSelectedId, setLastSelectedId] = useState(null); 
+  
+  // RENAME STATE
+  const [editingId, setEditingId] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  // --- 1. Fetch Data ---
+  useEffect(() => {
+    const fetchContents = async () => {
+      setLoading(true);
+      try {
+        const endpoint = `/folders/${folderId || 'root'}`;
+        const res = await api.get(endpoint);
+        
+        // 🛡️ SAFETY CHECK: Ensure arrays exist to prevent crashes
+        setData({
+            folders: res.data.folders || [],
+            files: res.data.files || [],
+            currentFolder: res.data.folder || null
+        });
+        
+        setSelectedItems([]); 
+        setLastSelectedId(null);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load contents");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchContents();
+  }, [folderId]);
+
+  // Combine for Uniform List (Folders first)
+  // 🛡️ SAFETY CHECK: Use ( || []) to prevent "map of undefined" crash
+  const allItems = [
+    ...(data.folders || []).map(f => ({ ...f, type: 'folder' })),
+    ...(data.files || []).map(f => ({ ...f, type: 'file' }))
+  ];
+
+  // --- 2. Windows-Style Selection Logic ---
+  const handleItemClick = (e, item) => {
+    if (editingId === item._id) return;
+
+    const isSelected = selectedItems.includes(item._id);
+
+    // CTRL Key: Toggle Selection
+    if (e.ctrlKey || e.metaKey) {
+      if (isSelected) {
+        setSelectedItems(prev => prev.filter(id => id !== item._id));
+      } else {
+        setSelectedItems(prev => [...prev, item._id]);
+        setLastSelectedId(item._id);
+      }
+    }
+    // SHIFT Key: Range Selection
+    else if (e.shiftKey && lastSelectedId) {
+      const currentIndex = allItems.findIndex(i => i._id === item._id);
+      const lastIndex = allItems.findIndex(i => i._id === lastSelectedId);
+      
+      const start = Math.min(currentIndex, lastIndex);
+      const end = Math.max(currentIndex, lastIndex);
+      
+      const rangeIds = allItems.slice(start, end + 1).map(i => i._id);
+      setSelectedItems(prev => [...new Set([...prev, ...rangeIds])]);
+    }
+    // NORMAL Click: Select Single
+    else {
+      setSelectedItems([item._id]);
+      setLastSelectedId(item._id);
+    }
+  };
+
+  // --- 3. Rename Logic ---
+  const handleNameClick = (e, item) => {
+    e.stopPropagation();
+    if (selectedItems.includes(item._id) && selectedItems.length === 1 && !e.ctrlKey && !e.shiftKey) {
+       setTimeout(() => {
+         setEditingId(item._id);
+         setRenameValue(item.name || item.fileName);
+       }, 200);
+    } else {
+       handleItemClick(e, item);
+    }
+  };
+
+  const submitRename = async () => {
+    if (!renameValue.trim() || !editingId) {
+      setEditingId(null);
+      return;
+    }
+
+    const item = allItems.find(i => i._id === editingId);
+    const oldName = item.type === 'folder' ? item.name : item.fileName;
+    if (oldName === renameValue) {
+        setEditingId(null);
+        return;
+    }
+
+    try {
+        // ✅ API CALL RESTORED
+        const endpoint = item.type === 'folder' ? `/folders/${item._id}` : `/files/${item._id}`;
+        const payload = item.type === 'folder' ? { name: renameValue } : { fileName: renameValue };
+        
+        await api.put(endpoint, payload); 
+        
+        // UI Update
+        if (item.type === 'folder') {
+            setData(prev => ({
+                ...prev,
+                folders: prev.folders.map(f => f._id === editingId ? { ...f, name: renameValue } : f)
+            }));
+        } else {
+            setData(prev => ({
+                ...prev,
+                files: prev.files.map(f => f._id === editingId ? { ...f, fileName: renameValue } : f)
+            }));
+        }
+        toast.success("Renamed");
+    } catch (err) {
+        console.error(err);
+        toast.error("Rename failed");
+    } finally {
+        setEditingId(null);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') submitRename();
+    if (e.key === 'Escape') setEditingId(null);
+  };
+
+  // --- 4. Navigation (Double Click) ---
+  const handleDoubleClick = (item) => {
+    if (editingId) return; 
+
+    if (item.type === 'folder') {
+        navigate(`/folder/${item._id}`);
+    } else {
+        // ✅ FIX: Go to File Viewer (Not Chat)
+        navigate(`/files/${item._id}`);
+    }
+  };
+
+  // --- 5. Actions ---
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete ${selectedItems.length} items?`)) return;
+    try {
+        for (const id of selectedItems) {
+            const item = allItems.find(i => i._id === id);
+            // Handle both endpoints
+            const endpoint = item.type === 'folder' ? `/folders/${id}` : `/files/${id}`;
+            await api.delete(endpoint);
+        }
+        
+        setData(prev => ({
+            ...prev,
+            folders: prev.folders.filter(f => !selectedItems.includes(f._id)),
+            files: prev.files.filter(f => !selectedItems.includes(f._id))
+        }));
+        setSelectedItems([]);
+        toast.success("Deleted");
+    } catch (e) { console.error(e); toast.error("Delete failed"); }
+  };
+  
+  const handleStartChat = () => {
+      const fileIds = selectedItems.filter(id => {
+          const item = allItems.find(i => i._id === id);
+          return item && item.type === 'file';
+      });
+      if (fileIds.length === 0) return toast.error("Select files to chat");
+      // ✅ Pass files to chat correctly
+      navigate('/chat', { state: { contextFiles: fileIds } });
+  };
+
+  const handleCreateFolder = async (e) => {
+    e.preventDefault();
+    if (!newFolderName.trim()) return;
+    try {
+      await api.post('/folders', { name: newFolderName, parentId: folderId || null });
+      setNewFolderName("");
+      setCreating(false);
+      // Refresh
+      const endpoint = `/folders/${folderId || 'root'}`;
+      const res = await api.get(endpoint);
+      setData({
+        folders: res.data.folders || [],
+        files: res.data.files || [],
+        currentFolder: res.data.folder || null
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create folder");
+    }
+  };
+
+  const handleUploadComplete = async () => {
+    try {
+      const endpoint = `/folders/${folderId || 'root'}`;
+      const res = await api.get(endpoint);
+      setData({
+        folders: res.data.folders || [],
+        files: res.data.files || [],
+        currentFolder: res.data.folder || null
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to refresh after upload");
+    }
+  };
+
+  // Improved Navigation
+  const goUp = () => {
+    // ✅ FIX 3: Correct parent routing
+    if (data.currentFolder?.parentId) {
+        navigate(`/folder/${data.currentFolder.parentId}`);
+    } else {
+        navigate('/dashboard');
+    }
+  };
+
+  if (loading) return <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-blue-600" /></div>;
+
+  return (
+    <div 
+      className="p-6 md:p-10 h-full overflow-y-auto select-none" 
+      onClick={() => {
+        if (!editingId) setSelectedItems([]); 
+      }}
+    >
+      <Toaster position="bottom-center" />
+      
+      {/* HEADER */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 text-2xl font-bold text-gray-800">
+          {folderId ? (
+            <button onClick={goUp} className="p-2 hover:bg-gray-200 rounded-full transition text-gray-600">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+          ) : (
+            <div className="p-2 bg-blue-50 rounded-lg">
+               <Home className="w-6 h-6 text-blue-600" />
+            </div>
+          )}
+          <span className="truncate max-w-[200px] md:max-w-md">
+            {data.currentFolder ? data.currentFolder.name : "My Drive"}
+          </span>
+        </div>
+
+        <div className="flex gap-3">
+           <button onClick={() => setCreating(!creating)} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl text-sm font-semibold transition shadow-sm">
+             <Plus className="w-4 h-4" /> New Folder
+           </button>
+           <button onClick={() => setIsUploadOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl text-sm font-semibold transition shadow-md shadow-blue-200">
+             <UploadCloud className="w-4 h-4" /> Upload
+           </button>
+        </div>
+      </div>
+
+      {/* CREATE FOLDER INPUT */}
+      {creating && (
+        <div className="mb-8" onClick={(e) => e.stopPropagation()}>
+          <form onSubmit={handleCreateFolder} className="flex gap-2 items-center bg-white p-2 rounded-xl shadow-sm border border-blue-100 w-fit">
+             <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                <Folder className="w-5 h-5 text-blue-600" />
+             </div>
+             <input autoFocus type="text" placeholder="Folder Name" className="outline-none text-sm font-medium bg-transparent w-48 px-2" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} />
+             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition">Create</button>
+          </form>
+        </div>
+      )}
+
+      {/* UNIFIED GRID */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 pb-32">
+          {allItems.length === 0 && !loading && (
+             <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
+                <Folder className="w-12 h-12 mb-2 opacity-20" />
+                <p>This folder is empty</p>
+             </div>
+          )}
+
+          {allItems.map(item => {
+            const active = selectedItems.includes(item._id);
+            const isEditing = editingId === item._id;
+            
+            return (
+              <div 
+                key={item._id}
+                onClick={(e) => { e.stopPropagation(); handleItemClick(e, item); }}
+                onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClick(item); }}
+                className={`
+                  relative group flex flex-col items-center justify-center p-4 rounded-xl cursor-pointer transition-all duration-100 border
+                  ${active 
+                    ? 'bg-blue-100 border-blue-500 shadow-sm z-10' 
+                    : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200'
+                  }
+                `}
+              >
+                {/* Icon */}
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-colors 
+                  ${active ? 'bg-blue-200' : 'bg-gray-100 group-hover:bg-white group-hover:shadow-sm'}`}>
+                  {item.type === 'folder' ? (
+                    <Folder className={`w-7 h-7 ${active ? 'text-blue-700' : 'text-blue-500'}`} />
+                  ) : (
+                    <FileText className={`w-7 h-7 ${active ? 'text-blue-700' : 'text-gray-500'}`} />
+                  )}
+                </div>
+                
+                {/* Name / Rename Input */}
+                {isEditing ? (
+                    <input 
+                        autoFocus
+                        type="text"
+                        className="w-full text-center text-sm font-medium bg-white border border-blue-500 rounded px-1 py-0.5 outline-none shadow-lg z-50"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={submitRename}
+                        onKeyDown={handleKeyDown}
+                        onClick={(e) => e.stopPropagation()} 
+                    />
+                ) : (
+                    <span 
+                        onClick={(e) => handleNameClick(e, item)}
+                        className={`text-sm font-medium truncate w-full text-center px-1 rounded
+                            ${active ? 'text-blue-900' : 'text-gray-700'}
+                        `}
+                    >
+                      {item.name || item.fileName}
+                    </span>
+                )}
+
+                {/* Size */}
+                {!isEditing && item.type === 'file' && (
+                   <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wide font-medium">
+                     {item.size ? `${(item.size / 1024).toFixed(0)} KB` : 'PDF'} 
+                   </span>
+                )}
+              </div>
+            );
+          })}
+      </div>
+
+      {/* FLOATING ACTION BAR */}
+      {selectedItems.length > 0 && (
+        <div onClick={(e) => e.stopPropagation()} className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-3 py-2 rounded-2xl shadow-2xl flex items-center gap-3 z-50 animate-in fade-in slide-in-from-bottom-4 border border-gray-700">
+          <div className="px-3 py-1 bg-gray-800 rounded-lg">
+             <span className="font-bold text-xs">{selectedItems.length} selected</span>
+          </div>
+          
+          <button onClick={handleStartChat} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-700 rounded-xl transition text-sm font-medium text-blue-300 hover:text-blue-200">
+             <MessageSquare className="w-4 h-4" /> Study
+          </button>
+
+          <div className="w-px h-5 bg-gray-700"></div>
+
+          <button onClick={() => setEditingId(selectedItems[0])} className="flex items-center gap-2 px-3 py-2 hover:bg-gray-700 rounded-xl transition text-sm font-medium text-gray-300 hover:text-white" title="Rename (F2)">
+             <Edit2 className="w-4 h-4" />
+          </button>
+
+          <button onClick={handleDelete} className="flex items-center gap-2 px-3 py-2 hover:bg-red-900/50 rounded-xl transition text-sm font-medium text-red-400 hover:text-red-300">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+      <UploadModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} folderId={folderId} onUploadComplete={handleUploadComplete}/>
+    </div>
+  );
+}

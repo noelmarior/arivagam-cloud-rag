@@ -1,99 +1,853 @@
-import { useEffect, useState } from 'react';
-import api from '../api/axios'; 
-import { FileText, Calendar, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import api from '../api/axios';
+import {
+  Folder, FileText, Plus, Loader2, ArrowLeft,
+  MessageSquare, Trash2, UploadCloud, Edit2,
+  Search, Download, Copy, Scissors, Clipboard, X,
+  FileSpreadsheet, FileImage, File
+} from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
+import UploadModal from '../components/UploadModal';
+import FolderCard from '../components/FolderCard';
 
-const Dashboard = () => {
-  const [files, setFiles] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Fetch the brain contents
+// Debounce helper for search
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
-    const fetchFiles = async () => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+};
+
+export default function Dashboard() {
+  const { folderId } = useParams();
+  const navigate = useNavigate();
+  const searchInputRef = useRef(null);
+  const fabRef = useRef(null); // Ref for FAB container
+
+
+  // Data
+  const [data, setData] = useState({ folders: [], files: [], currentFolder: null });
+  const [searchResults, setSearchResults] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // State
+  const [creating, setCreating] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
+
+  // ADVANCED SELECTION STATE
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [lastSelectedId, setLastSelectedId] = useState(null);
+
+  // RENAME STATE
+  const [editingId, setEditingId] = useState(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  // DRAG & DROP STATE
+  const [dragOverFolderId, setDragOverFolderId] = useState(null);
+
+  // CONTEXT MENU & CLIPBOARD STATE
+  const [contextMenu, setContextMenu] = useState(null); // { x, y, type: 'item'|'bg', targetId? }
+  const [clipboard, setClipboard] = useState({ action: null, items: [] }); // action: 'cut' | 'copy'
+
+  // SELECTION BOX STATE
+  const [selectionBox, setSelectionBox] = useState(null); // { startX, startY, currentX, currentY }
+  const [isSelecting, setIsSelecting] = useState(false);
+  const containerRef = useRef(null);
+  const dragStartRef = useRef(null); // To distinguish click vs drag
+
+  // --- 1. Fetch Data ---
+  useEffect(() => {
+    const fetchContents = async () => {
+      setLoading(true);
       try {
-        const res = await api.get('/files');
-        setFiles(res.data);
+        const endpoint = `/folders/${folderId || 'root'}`;
+        const res = await api.get(endpoint);
+
+        setData({
+          folders: res.data.folders || [],
+          files: res.data.files || [],
+          currentFolder: res.data.folder || null
+        });
+
+        setSelectedItems([]);
+        setLastSelectedId(null);
       } catch (err) {
-        console.error("Failed to load files", err);
-        setError("Failed to connect to your Digital Brain.");
+        console.error(err);
+        toast.error("Failed to load contents");
       } finally {
         setLoading(false);
       }
     };
+    fetchContents();
+  }, [folderId]);
 
-    fetchFiles();
+  // --- 2. Search Logic ---
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!debouncedSearch.trim()) {
+        setSearchResults(null);
+        return;
+      }
+      try {
+        const res = await api.get(`/files/search?query=${debouncedSearch}`);
+        setSearchResults(res.data);
+      } catch (err) {
+        console.error(err);
+        toast.error("Search failed");
+      }
+    };
+    performSearch();
+  }, [debouncedSearch]);
+
+  // --- 3. View Logic ---
+  const displayFolders = searchResults ? (searchResults.folders || []) : (data.folders || []);
+  const displayFiles = searchResults ? (searchResults.files || []) : (data.files || []);
+  const isSearching = !!searchResults;
+
+  const allItems = [
+    ...displayFolders.map(f => ({ ...f, type: 'folder' })),
+    ...displayFiles.map(f => ({ ...f, type: 'file' }))
+  ];
+
+  // --- 4. Drag & Drop Logic ---
+  const handleDragStart = (e, fileId) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("fileId", fileId);
+  };
+
+  const handleDragOver = (e, folderId) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverFolderId(folderId);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverFolderId(null);
+  };
+
+  const handleDrop = async (e, targetFolderId) => {
+    e.preventDefault();
+    const fileId = e.dataTransfer.getData("fileId");
+    setDragOverFolderId(null);
+
+    if (!fileId || !targetFolderId) return;
+
+    try {
+      // Optimistic UI Update
+      setData(prev => ({
+        ...prev,
+        files: prev.files.filter(f => f._id !== fileId)
+      }));
+
+      await api.put(`/files/${fileId}`, { folderId: targetFolderId });
+      toast.success("File moved!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to move file");
+      // Refresh logic could be improved, but reused existing
+      refreshData();
+    }
+  };
+
+  const refreshData = async () => {
+    try {
+      const endpoint = `/folders/${folderId || 'root'}`;
+      const res = await api.get(endpoint);
+      setData({
+        folders: res.data.folders || [],
+        files: res.data.files || [],
+        currentFolder: res.data.folder || null
+      });
+    } catch (e) { console.error(e); }
+  };
+
+
+  // --- 5. Selection Logic ---
+  const handleItemClick = (e, item) => {
+    if (editingId === item._id) return;
+    if (contextMenu) setContextMenu(null); // Close menu on click
+
+    const isSelected = selectedItems.includes(item._id);
+
+    if (e.ctrlKey || e.metaKey) {
+      if (isSelected) {
+        setSelectedItems(prev => prev.filter(id => id !== item._id));
+      } else {
+        setSelectedItems(prev => [...prev, item._id]);
+        setLastSelectedId(item._id);
+      }
+    }
+    else if (e.shiftKey && lastSelectedId) {
+      const currentIndex = allItems.findIndex(i => i._id === item._id);
+      const lastIndex = allItems.findIndex(i => i._id === lastSelectedId);
+
+      const start = Math.min(currentIndex, lastIndex);
+      const end = Math.max(currentIndex, lastIndex);
+
+      const rangeIds = allItems.slice(start, end + 1).map(i => i._id);
+      setSelectedItems(prev => [...new Set([...prev, ...rangeIds])]);
+    }
+    else {
+      setSelectedItems([item._id]);
+      setLastSelectedId(item._id);
+    }
+  };
+
+  // --- 6. Context Menu Logic ---
+  const handleContextMenu = (e, item = null) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (item) {
+      // If right-clicked item is NOT in selection, select it solely
+      if (!selectedItems.includes(item._id)) {
+        setSelectedItems([item._id]);
+        setLastSelectedId(item._id);
+      }
+      setContextMenu({
+        visible: true,
+        x: e.clientX,
+        y: e.clientY,
+        type: 'item',
+        targetId: item._id
+      });
+    } else {
+      // Background click
+      setContextMenu({
+        visible: true,
+        x: e.clientX,
+        y: e.clientY,
+        type: 'bg'
+      });
+    }
+  };
+
+  // Close context menu on global click
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
   }, []);
 
-  if (loading) return <div className="p-10 text-center text-gray-500">Loading your knowledge base...</div>;
-  if (error) return <div className="p-10 text-center text-red-500 font-bold">{error}</div>;
+  // Close FAB menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (fabRef.current && !fabRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [fabRef]);
+
+  // --- 7. Rename Logic ---
+  const startRename = (id) => {
+    const item = allItems.find(i => i._id === id);
+    if (!item) return;
+    setEditingId(id);
+    setRenameValue(item.name || item.fileName);
+    setContextMenu(null);
+  };
+
+  const handleNameClick = (e, item) => {
+    e.stopPropagation();
+    if (selectedItems.includes(item._id) && selectedItems.length === 1 && !e.ctrlKey && !e.shiftKey) {
+      setTimeout(() => startRename(item._id), 200);
+    } else {
+      handleItemClick(e, item);
+    }
+  };
+
+  const submitRename = async () => {
+    if (!renameValue.trim() || !editingId) {
+      setEditingId(null);
+      return;
+    }
+
+    const item = allItems.find(i => i._id === editingId);
+    if (!item) return;
+
+    const oldName = item.type === 'folder' ? item.name : item.fileName;
+    if (oldName === renameValue) {
+      setEditingId(null);
+      return;
+    }
+
+    try {
+      const endpoint = item.type === 'folder' ? `/folders/${item._id}` : `/files/${item._id}`;
+      const payload = item.type === 'folder' ? { name: renameValue } : { fileName: renameValue };
+
+      await api.put(endpoint, payload);
+
+      // UI Update
+      if (item.type === 'folder') {
+        setData(prev => ({
+          ...prev,
+          folders: prev.folders.map(f => f._id === editingId ? { ...f, name: renameValue } : f)
+        }));
+      } else {
+        setData(prev => ({
+          ...prev,
+          files: prev.files.map(f => f._id === editingId ? { ...f, fileName: renameValue } : f)
+        }));
+      }
+      toast.success("Renamed");
+    } catch (err) {
+      console.error(err);
+      toast.error("Rename failed");
+    } finally {
+      setEditingId(null);
+    }
+  };
+
+  // --- 8. Clipboard & Actions ---
+  const handleCopy = () => {
+    if (selectedItems.length === 0) return;
+    setClipboard({ action: 'copy', items: [...selectedItems] });
+    setContextMenu(null);
+    toast("Copied to clipboard", { icon: "📋" });
+  };
+
+  const handleCut = () => {
+    if (selectedItems.length === 0) return;
+    setClipboard({ action: 'cut', items: [...selectedItems] });
+    setContextMenu(null);
+    toast("Cut to clipboard", { icon: "✂️" });
+  };
+
+  const handlePaste = async () => {
+    if (clipboard.items.length === 0) return;
+    setContextMenu(null);
+
+    const targetFolderId = folderId || null;
+
+    try {
+      for (const id of clipboard.items) {
+
+        if (clipboard.action === 'cut') {
+          // Move logic
+          await api.put(`/files/${id}`, { folderId: targetFolderId });
+        } else {
+          // Copy logic - explicit endpoint
+          await api.post(`/files/${id}/copy`, { folderId: targetFolderId });
+        }
+      }
+      toast.success(clipboard.action === 'cut' ? "Moved Items" : "Copied Items");
+      if (clipboard.action === 'cut') setClipboard({ action: null, items: [] });
+      refreshData();
+    } catch (err) {
+      console.error("Paste error", err);
+      // Fallback or specific error handling
+      toast.error("Failed to paste items. Feature might be limited.");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (selectedItems.length === 0) return;
+    if (!window.confirm(`Delete ${selectedItems.length} items?`)) return;
+    setContextMenu(null);
+
+    try {
+      for (const id of selectedItems) {
+        // Try both or identify type. Since we have allItems in current view:
+        const item = allItems.find(i => i._id === id);
+        if (item) {
+          const endpoint = item.type === 'folder' ? `/folders/${id}` : `/files/${id}`;
+          await api.delete(endpoint);
+        }
+      }
+
+      setData(prev => ({
+        ...prev,
+        folders: prev.folders.filter(f => !selectedItems.includes(f._id)),
+        files: prev.files.filter(f => !selectedItems.includes(f._id))
+      }));
+      setSelectedItems([]);
+      toast.success("Deleted");
+    } catch (e) {
+      console.error(e);
+      toast.error("Delete failed");
+    }
+  };
+
+  const handleStartChat = () => {
+    const fileIds = selectedItems.filter(id => {
+      const item = allItems.find(i => i._id === id);
+      return item && item.type === 'file';
+    });
+    if (fileIds.length === 0) return toast.error("Select files to chat");
+    navigate('/chat', { state: { contextFiles: fileIds } });
+  };
+
+  // --- 9. Keyboard Shortcuts ---
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (editingId) {
+        if (e.key === 'Enter') submitRename();
+        if (e.key === 'Escape') setEditingId(null);
+        return;
+      }
+
+      // Ctrl+A
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        setSelectedItems(allItems.map(i => i._id));
+      }
+
+      // Copy
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+        e.preventDefault();
+        handleCopy();
+      }
+
+      // Cut
+      if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+        e.preventDefault();
+        handleCut();
+      }
+
+      // Paste
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+        e.preventDefault();
+        handlePaste();
+      }
+
+      // Delete
+      if (e.key === 'Delete') {
+        e.preventDefault();
+        handleDelete();
+      }
+
+      // F2 (Rename)
+      if (e.key === 'F2') {
+        e.preventDefault();
+        if (selectedItems.length === 1) {
+          startRename(selectedItems[0]);
+        }
+      }
+
+      // Escape
+      if (e.key === 'Escape') {
+        if (contextMenu) setContextMenu(null);
+        else setSelectedItems([]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItems, editingId, contextMenu, clipboard, allItems]);
+
+
+  // --- 10. Navigation ---
+  const handleDoubleClick = (item) => {
+    if (editingId) return;
+    if (item.type === 'folder') {
+      navigate(`/folder/${item._id}`);
+    } else {
+      navigate(`/files/${item._id}`);
+    }
+  };
+
+  const goUp = () => {
+    if (data.currentFolder?.parentId) {
+      navigate(`/folder/${data.currentFolder.parentId}`);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
+  const handleCreateFolder = async (e) => {
+    if (e) e.preventDefault();
+
+    // Default to "New Folder" if empty
+    let nameToUse = newFolderName.trim() || "New Folder";
+
+    // Auto-increment name if already exists
+    const existingNames = data.folders.map(f => f.name.toLowerCase());
+    if (existingNames.includes(nameToUse.toLowerCase())) {
+      let counter = 2;
+      let originalName = nameToUse;
+      while (existingNames.includes(`${originalName} ${counter}`.toLowerCase())) {
+        counter++;
+      }
+      nameToUse = `${originalName} ${counter}`;
+    }
+
+    try {
+      await api.post('/folders', { name: nameToUse, parentId: folderId || null });
+      setNewFolderName("");
+      setCreating(false);
+      refreshData();
+      toast.success("Folder created");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create folder");
+    }
+  };
+
+  const handleUploadComplete = () => {
+    refreshData();
+  };
+
+  if (loading && !searchResults) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Loader2 className="animate-spin text-blue-600 w-8 h-8" />
+      </div>
+    );
+  }
+
+
+  // --- 11. Selection Box Logic ---
+  const handleMouseDown = (e) => {
+    // Modify: Only start selection if clicking on the background (container) directly
+    // and NOT on an item/button/input
+    if (e.target.closest('.folder-card') ||
+      e.target.closest('button') ||
+      e.target.closest('input') ||
+      contextMenu
+    ) return;
+
+    if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      setSelectedItems([]);
+    }
+
+    setIsSelecting(true);
+    // Get relative coordinates to the container
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left + containerRef.current.scrollLeft;
+    const y = e.clientY - rect.top + containerRef.current.scrollTop;
+
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+
+    setSelectionBox({
+      startX: x,
+      startY: y,
+      currentX: x,
+      currentY: y,
+      initialSelected: [...selectedItems] // Keep track of what was selected before starting this drag
+    });
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isSelecting || !selectionBox) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left + containerRef.current.scrollLeft;
+    const y = e.clientY - rect.top + containerRef.current.scrollTop;
+
+    setSelectionBox(prev => ({
+      ...prev,
+      currentX: x,
+      currentY: y
+    }));
+
+    // Calculate selection box rect
+    const boxLeft = Math.min(selectionBox.startX, x);
+    const boxTop = Math.min(selectionBox.startY, y);
+    const boxWidth = Math.abs(x - selectionBox.startX);
+    const boxHeight = Math.abs(y - selectionBox.startY);
+
+    // Filter items intersecting with the box
+    const newSelected = [];
+
+    // We need to check intersection with rendered items
+    // Since we assigned IDs 'item-[id]' to FolderCards
+    allItems.forEach(item => {
+      const element = document.getElementById(`item-${item._id}`);
+      if (element) {
+        // Get element's relative position to container
+        const elKeyRect = element.getBoundingClientRect();
+
+        // Convert element rect to container-relative coordinates
+        // Actually simpler: check intersection of client rects
+        // Box client rect:
+        const boxClientLeft = rect.left + boxLeft - containerRef.current.scrollLeft;
+        const boxClientTop = rect.top + boxTop - containerRef.current.scrollTop;
+
+        // Intersection check
+        const isIntersecting = !(
+          elKeyRect.right < boxClientLeft ||
+          elKeyRect.left > boxClientLeft + boxWidth ||
+          elKeyRect.bottom < boxClientTop ||
+          elKeyRect.top > boxClientTop + boxHeight
+        );
+
+        if (isIntersecting) {
+          newSelected.push(item._id);
+        }
+      }
+    });
+
+    // Merge logic: standard behavior (add to initial selection)
+    // Or if ctrl not pressed, just the box selection?
+    // Let's implement: Initial + New (Union)
+    // If not holding ctrl/shift at start, initial was empty (cleared in MouseDown)
+
+    // Combining unique IDs
+    const combined = [...new Set([...selectionBox.initialSelected, ...newSelected])];
+    setSelectedItems(combined);
+  };
+
+  const handleMouseUp = () => {
+    setIsSelecting(false);
+    setSelectionBox(null);
+  };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Digital Brain</h1>
-          <p className="text-gray-500 mt-1">
-            {files.length} document{files.length !== 1 && 's'} indexed and ready.
-          </p>
+    <div
+      ref={containerRef}
+      className="p-6 md:p-10 h-full overflow-y-auto select-none relative"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+
+      onClick={(e) => {
+        if (!editingId && !isSelecting) {
+          // Check if it was a drag or a click
+          if (dragStartRef.current) {
+            const dist = Math.hypot(e.clientX - dragStartRef.current.x, e.clientY - dragStartRef.current.y);
+            if (dist > 5) return; // It was a drag, do not clear
+          }
+          setSelectedItems([]);
+        }
+      }}
+      onContextMenu={(e) => handleContextMenu(e, null)} // Background context menu
+    >
+
+      {/* HEADER */}
+      <div className="mb-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+          <div className="flex items-center gap-3 text-2xl font-bold text-gray-800">
+            {folderId ? (
+              <button
+                onClick={goUp}
+                className="p-2 hover:bg-gray-200 rounded-full transition text-gray-600"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+            ) : (
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <Folder className="w-6 h-6 text-blue-600" />
+              </div>
+            )}
+            <span className="truncate max-w-[200px] md:max-w-md">
+              {isSearching ? `Search: "${searchQuery}"` : (data.currentFolder ? data.currentFolder.name : "My Drive")}
+            </span>
+          </div>
+
+          <div className="flex gap-3">
+            {/* Buttons removed for FAB */}
+          </div>
         </div>
-        <Link to="/upload" className="bg-black text-white px-5 py-2 rounded-lg font-medium hover:bg-gray-800 transition">
-          + Add New
-        </Link>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            id="global-search-input"
+            name="search"
+            ref={searchInputRef}
+            type="text"
+            autoComplete="off"
+            placeholder="Search files and folders..."
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {loading && searchQuery && (
+            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-blue-600 animate-spin" />
+          )}
+        </div>
       </div>
 
-      {/* Grid of Knowledge */}
-      {files.length === 0 ? (
-        <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-          <p className="text-gray-500 mb-4">Your brain is empty.</p>
-          <Link to="/upload" className="text-blue-600 font-medium hover:underline">Upload your first document</Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {files.map((file) => (
-            <div key={file._id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition flex flex-col h-full">
-              
-              {/* Icon & Title */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <FileText className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                  {file.fileType === 'application/pdf' ? 'PDF' : 'TXT'}
-                </span>
-              </div>
-              
-              <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-1" title={file.fileName}>
-                {file.fileName}
-              </h3>
+      {/* CREATE FOLDER INPUT REMOVED - Using Ghost Card */}
 
-              {/* AI Summary Preview */}
-              <p className="text-gray-600 text-sm mb-6 flex-grow line-clamp-3">
-                {file.summary || "No summary available."}
-              </p>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
-                <div className="flex items-center text-gray-400 text-xs">
-                  <Calendar className="w-3 h-3 mr-1" />
-                  {new Date(file.createdAt).toLocaleDateString()}
-                </div>
-                <Link 
-                  to={`/files/${file._id}`} 
-                  className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
-                >
-                  Read More <ArrowRight className="w-4 h-4 ml-1" />
-                </Link>
-              </div>
-
-            </div>
-          ))}
+      {/* EMPTY STATE */}
+      {!loading && allItems.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+          <Folder className="w-20 h-20 mb-4 opacity-20" />
+          <p className="text-lg font-medium">
+            {isSearching ? "No results found" : "This folder is empty"}
+          </p>
         </div>
       )}
+
+      {/* UNIFIED GRID */}
+      {!loading && allItems.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 pb-32">
+          {/* Ghost Card for Creation */}
+          {creating && (
+            <FolderCard
+              item={{ _id: 'ghost', type: 'folder', name: '' }}
+              isGhost={true}
+              isEditing={true}
+              renameValue={newFolderName}
+              setRenameValue={setNewFolderName}
+              onRenameSubmit={handleCreateFolder}
+              onRenameCancel={() => {
+                setCreating(false);
+                setNewFolderName("");
+              }}
+            />
+          )}
+
+          {allItems.map(item => {
+            const active = selectedItems.includes(item._id);
+            const isEditing = editingId === item._id;
+            const isDropTarget = dragOverFolderId === item._id;
+            const isCut = clipboard.action === 'cut' && clipboard.items.includes(item._id);
+
+            return (
+              <FolderCard
+                key={item._id}
+                id={`item-${item._id}`} // Add ID for selection
+                className="folder-card" // Class marker for selection
+                item={item}
+                isSelected={active}
+                isEditing={isEditing}
+                renameValue={renameValue}
+                setRenameValue={setRenameValue}
+                onRenameSubmit={submitRename}
+                onRenameCancel={() => setEditingId(null)}
+                onClick={(e) => { e.stopPropagation(); handleItemClick(e, item); }}
+                onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClick(item); }}
+                onContextMenu={(e) => handleContextMenu(e, item)}
+                isDropTarget={isDropTarget}
+                isCut={isCut}
+
+                // Drag & Drop
+                onDragStart={(e) => item.type === 'file' && handleDragStart(e, item._id)}
+                onDragOver={(e) => item.type === 'folder' && handleDragOver(e, item._id)}
+                onDragLeave={() => item.type === 'folder' && handleDragLeave()}
+                onDrop={(e) => item.type === 'folder' && handleDrop(e, item._id)}
+              />
+            );
+          })}
+        </div>
+      )}
+
+
+      {/* SELECTION BOX RENDER */}
+      {isSelecting && selectionBox && (
+        <div
+          style={{
+            position: 'absolute',
+            left: Math.min(selectionBox.startX, selectionBox.currentX),
+            top: Math.min(selectionBox.startY, selectionBox.currentY),
+            width: Math.abs(selectionBox.currentX - selectionBox.startX),
+            height: Math.abs(selectionBox.currentY - selectionBox.startY),
+            pointerEvents: 'none',
+            zIndex: 50
+          }}
+          className="bg-blue-500/20 border border-blue-500/50 shadow-sm rounded-sm"
+        ></div>
+      )}
+
+      {/* CONTEXT MENU */}
+      {contextMenu && (
+        <div
+          className="fixed bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 min-w-[200px] animate-in fade-in zoom-in-95 duration-100"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.type === 'item' ? (
+            <>
+              <button onClick={handleStartChat} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+                <MessageSquare className="w-4 h-4" /> Study with AI
+              </button>
+              <div className="h-px bg-gray-100 my-1"></div>
+              <button onClick={handleCut} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+                <Scissors className="w-4 h-4" /> Cut
+              </button>
+              <button onClick={handleCopy} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+                <Copy className="w-4 h-4" /> Copy
+              </button>
+              {selectedItems.length === 1 && (
+                <button onClick={() => startRename(selectedItems[0])} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+                  <Edit2 className="w-4 h-4" /> Rename
+                </button>
+              )}
+              <div className="h-px bg-gray-100 my-1"></div>
+              <button onClick={handleDelete} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left">
+                <Trash2 className="w-4 h-4" /> Delete
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={() => { setCreating(true); setContextMenu(null); }} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+                <Plus className="w-4 h-4" /> New Folder
+              </button>
+              <button onClick={() => setIsUploadOpen(true)} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+                <UploadCloud className="w-4 h-4" /> Upload Files
+              </button>
+              {clipboard.items.length > 0 && (
+                <>
+                  <div className="h-px bg-gray-100 my-1"></div>
+                  <button onClick={handlePaste} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+                    <Clipboard className="w-4 h-4" /> Paste
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      <UploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        folderId={folderId}
+        onUploadComplete={handleUploadComplete}
+      />
+
+      {/* FAB - Click Outside Listener is handled via a Ref for the container */}
+      <div
+        ref={fabRef}
+        className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3"
+      >
+        {isMenuOpen && (
+          <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-2 min-w-[180px] animate-in slide-in-from-bottom-5 duration-200">
+            <button
+              onClick={() => {
+                setCreating(true);
+                setIsMenuOpen(false);
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors text-left"
+            >
+              <Folder className="w-5 h-5" /> New Folder
+            </button>
+            <button
+              onClick={() => {
+                setIsUploadOpen(true);
+                setIsMenuOpen(false);
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors text-left"
+            >
+              <FileText className="w-5 h-5" /> Upload File
+            </button>
+          </div>
+        )}
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className={`
+            w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full 
+            shadow-lg shadow-blue-300 flex items-center justify-center 
+            transition-all duration-300 ease-in-out hover:scale-105 active:scale-95
+            ${isMenuOpen ? 'rotate-135' : 'rotate-0'}
+          `}
+        >
+          <Plus className="w-8 h-8 transition-transform duration-300" />
+        </button>
+      </div>
     </div>
   );
-};
-
-export default Dashboard;
+}

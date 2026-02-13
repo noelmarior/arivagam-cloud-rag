@@ -1,12 +1,18 @@
 import axios from 'axios';
 
-// The Bridge Configuration
-const api = axios.create({
-    // This points to your Node.js server
-    baseURL: 'http://localhost:5000/api', 
-    headers: {
-        'Content-Type': 'application/json',
-    }
+const instance = axios.create({
+  baseURL: 'http://localhost:5000/api', // Make sure this matches your server port
 });
 
-export default api;
+// ✅ INTERCEPTOR: Automatically add Token to headers
+instance.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
+export default instance;

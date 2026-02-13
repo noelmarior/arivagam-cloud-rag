@@ -1,41 +1,67 @@
+require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const dotenv = require('dotenv');
+const path = require('path');
 
-// 1. Keep your existing modules
-const connectDB = require('./config/db');
-const apiRoutes = require('./routes/api'); // Or './routes/fileRoutes' if that's what you named it
+// --- IMPORTS ---
+// If you have these files, keep them. If not, comment them out.
+// const validateEnv = require('./config/validateEnv'); 
+// const errorHandler = require('./middleware/errorHandler'); 
+const authRoutes = require('./routes/authRoutes');
+const apiRoutes = require('./routes/api');
 
-// 2. Import the new Safety Nets
-const validateEnv = require('./config/validateEnv');
-const errorHandler = require('./middleware/errorHandler');
-
-// Load Env
-dotenv.config();
-
-// 3. Run Validation BEFORE starting anything
-validateEnv();
+// --- 1. VALIDATION ---
+// Run this before the app starts (Optional)
+// if (validateEnv) validateEnv(); 
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// --- 2. MIDDLEWARE ---
+
+// Configure CORS (Only once!)
+app.use(cors({
+  origin: 'http://localhost:5173', // Frontend URL
+  credentials: true
+}));
+
+// Parse JSON
 app.use(express.json());
 
-// 4. Connect DB (Keep your existing function)
-connectDB();
+// Request Logger
+app.use((req, res, next) => {
+  console.log(`📡 [${req.method}] ${req.path}`);
+  next();
+});
 
-// Routes
-// Ensure this path matches your actual route file name
-app.use('/api', apiRoutes);
+// Serve Static Files (Uploads)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Health Check Endpoint
+// --- 3. ROUTES ---
+app.use('/api/auth', authRoutes); // Auth routes first
+app.use('/api', apiRoutes);       // General API routes second
+
+// Health Check
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is healthy' });
 });
 
-// 5. Global Error Handler (Must be LAST, after routes)
-app.use(errorHandler);
+// --- 4. ERROR HANDLING ---
+// (Uncomment if you have the errorHandler file)
+// app.use(errorHandler);
 
+// --- 5. DATABASE & SERVER START ---
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+    // Only start server AFTER database connects
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ DB Connection Error:', err);
+    process.exit(1); // Stop process if DB fails
+  });

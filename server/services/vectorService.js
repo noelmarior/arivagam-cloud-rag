@@ -34,3 +34,5 @@ exports.queryVector = async (vector) => {
     throw error;
   }
 };
+
+exports.deleteVector = async (id) => { await index.deleteOne(id); };
