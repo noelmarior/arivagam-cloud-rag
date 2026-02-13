@@ -143,7 +143,7 @@ const Chat = () => {
         content: `**System Update:** Added ${fileIds.length} new source(s) to the context.`
       }]);
 
-      toast.success("Context Updated", { id: toastId });
+      toast.dismiss(toastId);
     } catch {
       toast.error("Failed to add sources", { id: toastId });
     }

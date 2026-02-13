@@ -148,7 +148,6 @@ export default function Dashboard() {
       }));
 
       await api.put(`/files/${fileId}`, { folderId: targetFolderId });
-      toast.success("File moved!");
     } catch (err) {
       console.error(err);
       toast.error("Failed to move file");
@@ -299,7 +298,6 @@ export default function Dashboard() {
           files: prev.files.map(f => f._id === editingId ? { ...f, fileName: renameValue } : f)
         }));
       }
-      toast.success("Renamed");
     } catch (err) {
       console.error(err);
       toast.error("Rename failed");
@@ -313,14 +311,12 @@ export default function Dashboard() {
     if (selectedItems.length === 0) return;
     setClipboard({ action: 'copy', items: [...selectedItems] });
     setContextMenu(null);
-    toast("Copied to clipboard", { icon: "📋" });
   };
 
   const handleCut = () => {
     if (selectedItems.length === 0) return;
     setClipboard({ action: 'cut', items: [...selectedItems] });
     setContextMenu(null);
-    toast("Cut to clipboard", { icon: "✂️" });
   };
 
   const handlePaste = async () => {
@@ -340,7 +336,6 @@ export default function Dashboard() {
           await api.post(`/files/${id}/copy`, { folderId: targetFolderId });
         }
       }
-      toast.success(clipboard.action === 'cut' ? "Moved Items" : "Copied Items");
       if (clipboard.action === 'cut') setClipboard({ action: null, items: [] });
       refreshData();
     } catch (err) {
@@ -371,7 +366,6 @@ export default function Dashboard() {
         files: prev.files.filter(f => !selectedItems.includes(f._id))
       }));
       setSelectedItems([]);
-      toast.success("Deleted");
     } catch (e) {
       console.error(e);
       toast.error("Delete failed");
@@ -486,7 +480,6 @@ export default function Dashboard() {
       setNewFolderName("");
       setCreating(false);
       refreshData();
-      toast.success("Folder created");
     } catch (err) {
       console.error(err);
       toast.error("Failed to create folder");

@@ -63,7 +63,6 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete }) => {
     }
 
     setUploading(false);
-    toast.success("Upload queue finished");
     onUploadComplete();
     onClose();
     setFiles([]);

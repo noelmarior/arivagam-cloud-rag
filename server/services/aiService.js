@@ -37,8 +37,20 @@ exports.generateSummary = async (text) => {
   }
 };
 
+// Rate Limiter Logic
+let requestCount = 0;
+// Reset counter every 60 seconds
+setInterval(() => {
+  requestCount = 0;
+}, 60000);
+
 // 3. THE NEW HYBRID LOGIC ENGINE
 exports.generateResponse = async (userMessage, contextText, lengthInstruction) => {
+  // Rate Limit Check
+  if (requestCount >= 15) {
+    throw new Error("429: Too many requests. Please wait a minute and try again.");
+  }
+  requestCount++;
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
@@ -59,7 +71,7 @@ exports.generateResponse = async (userMessage, contextText, lengthInstruction) =
 
       1. **RELEVANCE GUARDRAIL**: 
          - First, analyze if the USER QUESTION is related to the topics, concepts, or keywords found in the SOURCE MATERIALS.
-         - If the question is completely unrelated (e.g., asking about Biology when sources are about Computer Science), you MUST reply exactly:
+         - If the question is completely unrelated (e.g., asking about Biology when sources are about Computer Science), you MUST reply exactly (ensure space between "I" and "cannot"):
            "I cannot find information about this topic in the provided sources. Please ask something related to your materials."
          - Do NOT attempt to answer off-topic questions.
 

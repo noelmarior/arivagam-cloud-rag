@@ -26,15 +26,82 @@ const FileView = () => {
     fetchFile();
   }, [id]);
 
-  // Helper: build correct backend file URL
-  const getFileUrl = (filePath) => {
-    if (!filePath) return null;
-    return `http://localhost:5000/${filePath.replace(/\\/g, "/")}`;
+  // Helper: Get Theme based on file extension
+  const getFileTheme = (filename) => {
+    const ext = filename?.split('.').pop().toLowerCase();
+    if (['pdf'].includes(ext)) return {
+      base: 'red',
+      bg: 'bg-red-600',
+      text: 'text-red-600',
+      light: 'bg-red-50',
+      border: 'border-red-500',
+      hoverBg: 'hover:bg-red-700',
+      gradient: 'from-red-50 to-orange-50',
+      iconColor: 'text-red-600',
+      lightBorder: 'border-red-100',
+      titleColor: 'text-red-800',
+      proseColor: 'text-red-900/80',
+      Icon: FileText
+    };
+    if (['doc', 'docx'].includes(ext)) return {
+      base: 'blue',
+      bg: 'bg-blue-600',
+      text: 'text-blue-600',
+      light: 'bg-blue-50',
+      border: 'border-blue-500',
+      hoverBg: 'hover:bg-blue-700',
+      gradient: 'from-blue-50 to-indigo-50',
+      iconColor: 'text-blue-600',
+      lightBorder: 'border-blue-100',
+      titleColor: 'text-blue-800',
+      proseColor: 'text-blue-900/80',
+      Icon: FileText
+    };
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return {
+      base: 'emerald',
+      bg: 'bg-emerald-600',
+      text: 'text-emerald-600',
+      light: 'bg-emerald-50',
+      border: 'border-emerald-500',
+      hoverBg: 'hover:bg-emerald-700',
+      gradient: 'from-emerald-50 to-teal-50',
+      iconColor: 'text-emerald-600',
+      lightBorder: 'border-emerald-100',
+      titleColor: 'text-emerald-800',
+      proseColor: 'text-emerald-900/80',
+      Icon: Calendar // Using Calendar as placeholder or FileSpreadsheet if imported
+    };
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return {
+      base: 'purple',
+      bg: 'bg-purple-600',
+      text: 'text-purple-600',
+      light: 'bg-purple-50',
+      border: 'border-purple-500',
+      hoverBg: 'hover:bg-purple-700',
+      gradient: 'from-purple-50 to-pink-50',
+      iconColor: 'text-purple-600',
+      lightBorder: 'border-purple-100',
+      titleColor: 'text-purple-800',
+      proseColor: 'text-purple-900/80',
+      Icon: FileText // Using FileText as placeholder or FileImage if imported
+    };
+    return {
+      base: 'gray',
+      bg: 'bg-gray-600',
+      text: 'text-gray-600',
+      light: 'bg-gray-50',
+      border: 'border-gray-500',
+      hoverBg: 'hover:bg-gray-700',
+      gradient: 'from-gray-50 to-slate-50',
+      iconColor: 'text-gray-600',
+      lightBorder: 'border-gray-100',
+      titleColor: 'text-gray-800',
+      proseColor: 'text-gray-900/80',
+      Icon: FileText
+    };
   };
 
-  const handleStartChat = () => {
-    navigate('/chat', { state: { contextFiles: [id] } });
-  };
+  const theme = file ? getFileTheme(file.fileName) : {};
 
   if (loading) {
     return (
@@ -47,6 +114,16 @@ const FileView = () => {
   if (!file) {
     return <div className="p-8 text-center text-gray-500">File not found.</div>;
   }
+
+  // Helper: build correct backend file URL
+  const getFileUrl = (filePath) => {
+    if (!filePath) return null;
+    return `http://localhost:5000/${filePath.replace(/\\/g, "/")}`;
+  };
+
+  const handleStartChat = () => {
+    navigate('/chat', { state: { contextFiles: [id] } });
+  };
 
   return (
     <div className="h-full overflow-y-auto p-8 bg-gray-50">
@@ -68,8 +145,8 @@ const FileView = () => {
 
             {/* LEFT SIDE: Icon & Title */}
             <div className="flex items-center gap-4">
-              <div className="p-4 bg-blue-50 rounded-xl">
-                <FileText className="w-8 h-8 text-blue-600" />
+              <div className={`p-4 rounded-xl ${theme.light}`}>
+                <theme.Icon className={`w-8 h-8 ${theme.iconColor}`} />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
@@ -85,7 +162,7 @@ const FileView = () => {
             {/* RIGHT SIDE: Chat Button (NEW) */}
             <button
               onClick={handleStartChat}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md"
+              className={`flex items-center gap-2 px-4 py-2 ${theme.bg} text-white rounded-lg ${theme.hoverBg} transition shadow-md`}
             >
               <MessageSquare className="w-4 h-4" /> Start Session
             </button>
@@ -93,11 +170,11 @@ const FileView = () => {
           </div>
 
           {/* AI Summary */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
-            <h3 className="text-xs font-bold text-blue-800 mb-3 uppercase tracking-wider">
+          <div className={`bg-gradient-to-r ${theme.gradient} p-6 rounded-xl border-l-4 ${theme.border} ${theme.lightBorder}`}>
+            <h3 className={`text-xs font-bold ${theme.titleColor} mb-3 uppercase tracking-wider`}>
               AI Summary
             </h3>
-            <div className="text-blue-900/80 text-sm leading-relaxed prose prose-sm max-w-none text-blue-900/80 prose-headings:font-bold prose-p:my-1 prose-li:my-0">
+            <div className={`${theme.proseColor} text-sm leading-relaxed prose prose-sm max-w-none prose-headings:font-bold prose-p:my-1 prose-li:my-0`}>
               <ReactMarkdown>{file.summary}</ReactMarkdown>
             </div>
           </div>

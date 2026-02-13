@@ -112,7 +112,6 @@ const Layout = () => {
       await api.delete(`/sessions/${id}`);
       setSessions(prev => prev.filter(s => s._id !== id));
       if (location.pathname.includes(id)) navigate('/dashboard');
-      toast.success("Deleted");
     } catch {
       toast.error("Delete failed");
     }
@@ -133,7 +132,6 @@ const Layout = () => {
       setSessions(prev =>
         prev.map(s => s._id === renamingId ? { ...s, name: renameValue } : s)
       );
-      toast.success("Renamed");
     } catch {
       toast.error("Rename failed");
     }
@@ -150,30 +148,31 @@ const Layout = () => {
         onStart={handleStartSession}
       />
 
-      {/* SIDEBAR */}
-      <aside className={`bg-gray-900 text-gray-300 w-64 flex-shrink-0 flex flex-col transition-all duration-300 z-20 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full absolute h-full'}`}>
+      {/* SIDEBAR - FLOATING STYLE */}
+      <aside className={`
+        fixed left-3 top-3 bottom-0 w-64 z-20 flex flex-col transition-all duration-300
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[110%]'}
+        bg-white rounded-2xl border border-gray-100 shadow-sm
+      `}>
 
         {/* LOGO */}
-        <div className="p-5 border-b border-gray-800 flex items-center gap-2 text-white font-bold text-lg tracking-wider">
-          <img src={logo} alt="Logo" className="w-6 h-6 rounded-full object-cover" />
-          <span>ARIVAGAM</span>
+        <div className="p-5 flex items-center gap-3 border-b border-gray-50">
+          <img src="/logo_mel.png" alt="Logo" className="w-12 h-12 rounded-[7px] object-cover shadow-sm" />
+          <span className="font-bold text-gray-900 tracking-tight text-2xl relative -top-[3px] -left-[1px]">ARIVAGAM</span>
         </div>
 
         {/* NAVIGATION */}
-        <div className="p-4 space-y-2">
+        <div className="p-3 space-y-3 mt-2">
           <button
             onClick={() => setIsSourceModalOpen(true)}
-            className="flex items-center gap-3 w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-md"
+            className="flex items-center gap-3 w-full px-4 py-3 bg-white border border-gray-100 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium"
           >
             <Plus className="w-5 h-5" /> New Session
           </button>
 
           <button
             onClick={() => navigate('/dashboard')}
-            className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl transition ${location.pathname.includes('/dashboard')
-              ? 'bg-gray-800 text-white'
-              : 'hover:bg-gray-800/50'
-              }`}
+            className={`flex items-center gap-3 w-full px-4 py-3 bg-white border border-gray-100 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium`}
           >
             <BookOpen className="w-5 h-5" /> My Drive
           </button>
@@ -181,13 +180,16 @@ const Layout = () => {
 
         {/* RECENT SESSIONS LIST */}
         <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 px-3">Recent Sessions</p>
-          <div className="space-y-1 pb-10">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">Recent Sessions</p>
+          <div className="space-y-0 pb-10">
             {sessions.map(sess => (
               <div
                 key={sess._id}
                 onClick={() => { if (!renamingId) navigate(`/chat/${sess._id}`) }}
-                className={`group relative flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition select-none ${location.pathname.includes(sess._id) ? 'bg-gray-800 text-white' : 'hover:bg-gray-800/50 text-gray-400'
+                className={`group relative flex items-center justify-between px-3 py-1 rounded-lg cursor-pointer select-none transition-all duration-200 border
+                  ${location.pathname.includes(sess._id)
+                    ? 'bg-blue-50 border-blue-200 shadow-sm'
+                    : 'bg-white border-transparent hover:-translate-y-1 hover:shadow-md hover:border-gray-100'
                   }`}
               >
                 {/* RENAME INPUT MODE */}
@@ -195,7 +197,7 @@ const Layout = () => {
                   <form onSubmit={submitRename} onClick={e => e.stopPropagation()} className="flex-1 flex gap-1">
                     <input
                       autoFocus
-                      className="w-full bg-gray-700 text-white text-sm rounded px-1 outline-none border border-blue-500"
+                      className="w-full bg-white text-gray-900 text-sm rounded px-1 outline-none border border-blue-500 shadow-sm"
                       value={renameValue}
                       onChange={e => setRenameValue(e.target.value)}
                       onBlur={submitRename}
@@ -204,39 +206,41 @@ const Layout = () => {
                 ) : (
                   <>
                     {/* SESSION NAME */}
-                    <div className="flex items-center gap-2 overflow-hidden flex-1">
-                      {sess.isPinned && <Pin className="w-3 h-3 text-blue-400 fill-blue-400 flex-shrink-0" />}
+                    <div className="flex items-center gap-3 overflow-hidden flex-1">
+                      <MessageSquare className={`w-4 h-4 flex-shrink-0 ${location.pathname.includes(sess._id) ? 'text-blue-600' : 'text-gray-400 group-hover:text-blue-500'}`} />
 
-                      <span className={`text-sm truncate transition-colors ${sess.isPinned ? 'text-blue-100 font-medium' :
-                        location.pathname.includes(sess._id) ? 'text-white' : 'text-gray-400'
+                      <span className={`text-sm truncate transition-colors font-medium ${sess.isPinned ? 'text-blue-600' :
+                        location.pathname.includes(sess._id) ? 'text-blue-900' : 'text-gray-600 group-hover:text-gray-900'
                         }`}>
                         {sess.name}
                       </span>
+                      {/* PIN INDICATOR */}
+                      {sess.isPinned && <Pin className="w-3 h-3 text-blue-500 fill-blue-500 flex-shrink-0 ml-auto" />}
                     </div>
 
-                    {/* THREE DOTS MENU */}
+                    {/* THREE DOTS MENU (Visible on Hover or Active) */}
                     <div className="relative">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveMenuId(activeMenuId === sess._id ? null : sess._id);
                         }}
-                        className={`p-1 rounded-md transition ${activeMenuId === sess._id ? 'bg-gray-700 text-white' : 'text-transparent group-hover:text-gray-400 hover:text-white'}`}
+                        className={`p-1 rounded-md transition-opacity ${activeMenuId === sess._id || location.pathname.includes(sess._id) ? 'opacity-100 text-gray-600' : 'opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600'}`}
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
 
                       {/* DROPDOWN MENU */}
                       {activeMenuId === sess._id && (
-                        <div ref={menuRef} className="absolute right-0 top-8 w-32 bg-gray-800 border border-gray-700 shadow-xl rounded-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                          <button onClick={(e) => initRename(e, sess)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition">
+                        <div ref={menuRef} className="absolute right-0 top-8 w-32 bg-white border border-gray-100 shadow-xl rounded-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                          <button onClick={(e) => initRename(e, sess)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition">
                             <Edit2 className="w-3 h-3" /> Rename
                           </button>
-                          <button onClick={(e) => handlePin(e, sess)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition">
+                          <button onClick={(e) => handlePin(e, sess)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition">
                             <Pin className="w-3 h-3" /> {sess.isPinned ? 'Unpin' : 'Pin'}
                           </button>
-                          <div className="h-px bg-gray-700 my-1"></div>
-                          <button onClick={(e) => handleDelete(e, sess._id)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-400 hover:bg-red-900/30 transition">
+                          <div className="h-px bg-gray-100 my-1"></div>
+                          <button onClick={(e) => handleDelete(e, sess._id)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition">
                             <Trash2 className="w-3 h-3" /> Delete
                           </button>
                         </div>
@@ -250,46 +254,47 @@ const Layout = () => {
         </div>
 
         {/* USER PROFILE MENU (Bottom Bar) */}
-        <div className="p-4 border-t border-gray-800 relative" ref={userMenuRef}>
+        <div className="p-3 border-t border-gray-50 relative" ref={userMenuRef}>
 
           {/* POPUP MENU */}
           {showUserMenu && (
-            <div className="absolute bottom-full left-4 right-4 mb-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl p-1 overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
+            <div className="absolute bottom-full left-3 right-3 mb-2 bg-white border border-gray-100 rounded-xl shadow-xl p-1 overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
 
               {/* User Email Info */}
-              <div className="px-3 py-2 border-b border-gray-700 mb-1">
-                <p className="text-white text-sm font-bold truncate">{user?.name || 'User'}</p>
+              <div className="px-3 py-2 border-b border-gray-50 mb-1">
+                <p className="text-gray-900 text-sm font-bold truncate">{user?.name || 'User'}</p>
                 <p className="text-gray-500 text-xs truncate">{user?.email || 'user@example.com'}</p>
               </div>
 
-
-
               {/* Logout */}
-              <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-gray-700 rounded-lg transition mt-1">
+              <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition mt-1">
                 <LogOut className="w-4 h-4" /> Log out
               </button>
             </div>
           )}
 
-          {/* MAIN BUTTON */}
+          {/* MAIN BUTTON - Floating Card Style */}
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className={`flex items-center gap-3 w-full p-2 rounded-xl transition ${showUserMenu ? 'bg-gray-800' : 'hover:bg-gray-800'}`}
+            className={`flex items-center gap-3 w-full p-2 rounded-xl transition-all duration-300 border border-transparent
+              ${showUserMenu ? 'bg-gray-50 border-gray-200' : 'bg-white hover:-translate-y-1 hover:shadow-md hover:border-gray-100'}
+            `}
           >
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white">
               {user?.name?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 text-left overflow-hidden">
-              <p className="text-sm font-medium text-white truncate">{user?.name || 'User'}</p>
+              <p className="text-sm font-bold text-blue-900 truncate">{user?.name || 'User'}</p>
               <p className="text-xs text-gray-500 truncate">Student</p>
             </div>
-            <ChevronUp className={`w-4 h-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+            <ChevronUp className={`w-4 h-4 text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
           </button>
         </div>
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col relative z-0 overflow-hidden">
+      {/* Add margin-left to clear the fixed sidebar */}
+      <main className={`flex-1 flex flex-col relative z-0 overflow-hidden transition-all duration-300 h-screen ${isSidebarOpen ? 'ml-[270px]' : 'ml-0'}`}>
         <Outlet />
       </main>
 
