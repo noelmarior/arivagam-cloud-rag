@@ -1,7 +1,7 @@
 const Session = require('../models/Session');
 const File = require('../models/File');
 const vectorService = require('../services/vectorService');
-const aiService = require('../services/aiService'); 
+const aiService = require('../services/aiService');
 
 // server/controllers/chatController.js
 
@@ -20,7 +20,7 @@ exports.initializeSession = async (req, res) => {
 
     // B. Generate Title & Summary
     const combinedSummaries = files.map(f => f.summary).join("\n\n");
-    
+
     // Improved Prompt: Explicitly asks for NO markdown
     const prompt = `
       Analyze these document summaries:
@@ -34,32 +34,36 @@ exports.initializeSession = async (req, res) => {
     `;
 
     // Default Fallback
-    let aiData = { 
-      title: "Study Session", 
-      summary: "I've loaded your files. How can I help you with them?" 
+    let aiData = {
+      title: "Study Session",
+      summary: "I've loaded your files. How can I help you with them?"
     };
-    
+
     try {
-       // Call AI
-       const raw = await aiService.generateResponse(prompt, "");
-       console.log("🔹 AI Raw Response:", raw); // Log it so we can see what the AI sent
+      // Call AI
+      const raw = await aiService.generateRaw(prompt);
+      console.log("🔹 AI Raw Response:", raw);
 
-       // --- CLEANER LOGIC ---
-       // 1. Remove markdown code blocks if present
-       let cleanJson = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-       
-       // 2. Extract only the part between { and }
-       const firstBrace = cleanJson.indexOf('{');
-       const lastBrace = cleanJson.lastIndexOf('}');
-       
-       if (firstBrace !== -1 && lastBrace !== -1) {
+      if (raw && typeof raw === 'string') {
+        // --- CLEANER LOGIC ---
+        let cleanJson = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+        const firstBrace = cleanJson.indexOf('{');
+        const lastBrace = cleanJson.lastIndexOf('}');
+
+        if (firstBrace !== -1 && lastBrace !== -1) {
           cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
-          aiData = JSON.parse(cleanJson); // Parse the cleaned string
-       }
-
+          try {
+            aiData = JSON.parse(cleanJson);
+          } catch (p) {
+            console.warn("⚠️ JSON Parse Error:", p.message);
+          }
+        }
+      } else {
+        console.warn("⚠️ AI returned null/invalid.");
+      }
     } catch (e) {
-       console.warn("⚠️ AI Parsing Failed:", e.message);
-       console.warn("Using default title/summary.");
+      console.warn("⚠️ AI Parsing Failed:", e.message);
+      console.warn("Using default title/summary.");
     }
 
     // C. Create Session in DB
@@ -69,7 +73,7 @@ exports.initializeSession = async (req, res) => {
       sourceFiles: fileIds,
       aiTitle: aiData.title,
       aiSummary: aiData.summary,
-      messages: [] 
+      messages: []
     });
 
     await newSession.save();
@@ -84,20 +88,37 @@ exports.initializeSession = async (req, res) => {
 // 2. SEND MESSAGE
 exports.sendMessage = async (req, res) => {
   try {
-    // CHANGE: We now accept 'styleInstruction' directly from the frontend
-    const { sessionId, message, styleInstruction } = req.body; 
+    const { sessionId, message, styleInstruction } = req.body;
     const userId = req.auth.userId;
 
     // A. Verify Session
     const session = await Session.findOne({ _id: sessionId, userId });
     if (!session) return res.status(404).json({ error: "Session not found" });
 
-    // B. Build Context
-    const files = await File.find({ _id: { $in: session.sourceFiles } });
-    const contextData = files.map(f => `[Source: ${f.fileName}]\n${f.content || f.summary}`).join("\n\n");
+    // B. Build Context via RAG (Vector Search)
+    // 1. Generate Embedding for User Query
+    const queryVector = await aiService.generateEmbedding(message);
+
+    let contextData = "";
+
+    if (queryVector) {
+      // 2. Search Pinecone (Filter by fileIds in this session)
+      // This solves the "Missing Session ID" issue because we filter by fileId, which always exists!
+      const vectorMatches = await vectorService.queryVector(queryVector, {
+        fileId: { $in: session.sourceFiles.map(id => id.toString()) }
+      });
+
+      // 3. Construct Context from Matches
+      // We deduplicate based on text to avoid repeating the same chunk
+      const uniqueTexts = [...new Set(vectorMatches.map(match => match.metadata.text))];
+      contextData = uniqueTexts.join("\n\n---\n\n");
+
+      console.log(`🔍 RAG Retrieved ${uniqueTexts.length} chunks for context.`);
+    } else {
+      console.warn("⚠️ Failed to generate embedding for query. Falling back to empty context.");
+    }
 
     // C. Define Instruction (The Override Logic)
-    // If user sent a custom style, use it. Otherwise, use a default "Concise" mode.
     const finalInstruction = styleInstruction || "Keep it concise and direct (approx 2 sentences).";
 
     // D. Call AI

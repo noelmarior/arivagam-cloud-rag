@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import api from '../api/axios';
 import {
   Folder, FileText, Plus, Loader2, ArrowLeft,
@@ -25,6 +25,7 @@ const useDebounce = (value, delay) => {
 export default function Dashboard() {
   const { folderId } = useParams();
   const navigate = useNavigate();
+  const { activeSessionId } = useOutletContext() || {}; // Get Global Session
   const searchInputRef = useRef(null);
   const fabRef = useRef(null); // Ref for FAB container
 
@@ -754,7 +755,7 @@ export default function Dashboard() {
       {/* CREATE FOLDER INPUT REMOVED - Using Ghost Card */}
 
       {/* EMPTY STATE */}
-      {!loading && allItems.length === 0 && (
+      {!loading && allItems.length === 0 && !creating && (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400">
           <Folder className="w-20 h-20 mb-4 opacity-20" />
           <p className="text-lg font-medium">
@@ -764,7 +765,7 @@ export default function Dashboard() {
       )}
 
       {/* UNIFIED GRID */}
-      {!loading && allItems.length > 0 && (
+      {!loading && (allItems.length > 0 || creating) && (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-4 pb-32">
           {/* Ghost Card for Creation */}
           {creating && (
@@ -890,6 +891,7 @@ export default function Dashboard() {
         onClose={() => setIsUploadOpen(false)}
         folderId={folderId}
         onUploadComplete={handleUploadComplete}
+        sessionId={activeSessionId} // Pass Global Session ID
       />
 
       <DeleteModal

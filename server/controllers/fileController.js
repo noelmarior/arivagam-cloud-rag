@@ -198,91 +198,75 @@ const convertToHtml = (originalPath) => {
 
 // ... (existing convertToPdf function remains unchanged) ...
 
+// Helper: Chunk text
+const chunkText = (text, size = 1000) => {
+  const chunks = [];
+  for (let i = 0; i < text.length; i += size) {
+    chunks.push(text.slice(i, i + size));
+  }
+  return chunks;
+};
+
 // 1. Upload File
 exports.uploadFile = async (req, res) => {
   try {
     // 0. Guard
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    // 1. Folder handling
-    let folderId = req.body.folderId;
-    if (!folderId || folderId === 'root' || folderId === 'null') {
-      folderId = null;
-    }
+    // 1. Params
+    console.log("Full Request Body:", req.body); // DEBUG LOG
+    // Capture Session ID (Body or Query)
+    const sessionId = req.body.sessionId || req.query.sessionId;
 
-    console.log(`📄 Processing: ${req.file.originalname} (${req.file.mimetype})`);
+    // Validation Guard: REMOVED (Allow global uploads from Dashboard)
+    // if (!sessionId) {
+    //   return res.status(400).json({ error: "Session ID is required..." });
+    // }
+
+    let { folderId } = req.body;
+    if (!folderId || folderId === 'root' || folderId === 'null') folderId = null;
+
+    console.log(`📄 Processing: ${req.file.originalname} (${req.file.mimetype}) for Session: ${sessionId}`);
 
     // 2. Extract text (Original Content)
     const content = await extractText(req.file);
+    // Explicit Check: Ensure text is not empty before proceeding
+    if (!content || content.trim().length === 0) {
+      throw new Error("Extracted text is empty. Cannot process empty file.");
+    }
 
-    // 3. AI Processing & Safety Gate
+    console.log(`✅ Extracted ${content.length} characters.`);
+
+    // 3. AI Summary
     let summary = "";
-    let embedding = [];
-    const isSufficientText = content && content.trim().length >= 10;
-
-    if (!isSufficientText) {
-      console.warn("⚠️ Skipping AI processing: Insufficient text extracted.");
-      summary = "No text content available for summary (Image or empty file).";
-      // Embedding remains invalid (empty array) to skip vector DB
-    } else {
-      try {
-        // 3a. Generate Summary
-        summary = await aiService.generateSummary(content);
-
-        // 3b. Generate Embedding
-        const rawEmbedding = await aiService.generateEmbedding(content);
-
-        // 3c. Safety Gate: Validate Embedding
-        if (!rawEmbedding || rawEmbedding.length === 0 || rawEmbedding.every(n => n === 0)) {
-          console.warn("⚠️ AI returned zero/empty vector. Skipping vector DB upsert.");
-        } else {
-          embedding = rawEmbedding; // Only set if valid
-        }
-
-      } catch (aiError) {
-        console.error("❌ AI Processing Failed (Non-fatal):", aiError.message);
-        summary = "AI Summary unavailable due to an error.";
-        // Embedding remains empty, ensuring we don't crash or upsert bad data
-      }
+    try {
+      summary = await aiService.generateSummary(content);
+    } catch (aiError) {
+      console.warn("Summary generation failed:", aiError.message);
+      summary = "Summary unavailable.";
     }
 
     // 4. Conversion Logic (PDF or HTML)
     let finalFilePath = req.file.path;
     let finalMimeType = req.file.mimetype;
 
-    // Special handling for Excel -> HTML
     if (req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
       try {
-        console.log("🔄 Converting Excel to HTML for structured view...");
         const htmlPath = await convertToHtml(req.file.path);
         finalFilePath = htmlPath;
-        finalMimeType = 'text/html'; // Browser can render this directly
-        console.log("✅ Excel conversion successful:", finalFilePath);
-      } catch (convErr) {
-        console.error("⚠️ Excel Conversion Failed:", convErr);
-        // Fallback to original file or error? 
-        // For now, keep original but maybe warn
-      }
+        finalMimeType = 'text/html';
+      } catch (e) { console.error("Excel conversion failed", e); }
     }
-    // Existing PDF conversion for other types (Images, Word, Text) -> PDF
     else if (req.file.mimetype !== 'application/pdf') {
       try {
-        console.log("🔄 Converting to PDF for viewer...");
         const type = req.file.mimetype.startsWith('image/') ? 'image' : 'text';
-        const pdfPath = await convertToPdf(content, req.file.path, type);
-
-        finalFilePath = pdfPath;
+        finalFilePath = await convertToPdf(content, req.file.path, type);
         finalMimeType = 'application/pdf';
-        console.log("✅ Conversion successful:", finalFilePath);
-      } catch (convErr) {
-        console.error("⚠️ PDF Conversion Failed:", convErr);
-      }
+      } catch (e) { console.error("PDF conversion failed", e); }
     }
 
-    // 5. Manual ID Generation
+    // 5. Create Mongo Document
     const fileId = new mongoose.Types.ObjectId();
-
-    // 6. Create Mongo Document
     const newFile = new File({
       _id: fileId,
       fileName: req.file.originalname,
@@ -293,36 +277,53 @@ exports.uploadFile = async (req, res) => {
       userId: req.auth.userId,
       folderId,
       filePath: finalFilePath,
-      pineconeId: fileId.toString()
+      pineconeId: fileId.toString() // Base ID, but vectors will be chunked
     });
 
-    await newFile.save();
+    // 6. Chunking & Embedding (The Core Logic Fix)
+    const chunks = chunkText(content, 1000);
+    const vectorsToUpsert = [];
 
-    // 7. Prepare Pinecone Metadata
-    const pineconeMetadata = {
-      fileName: newFile.fileName,
-      summary,
-      userId: req.auth.userId
-    };
-    if (folderId) pineconeMetadata.folderId = folderId;
+    console.log(`🧩 Chunking content into ${chunks.length} parts...`);
 
-    // 8. Store Vector (Safety Gate: Only if embedding is valid)
-    if (embedding.length > 0) {
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
       try {
-        await vectorService.upsertVector(
-          fileId.toString(),
-          embedding,
-          pineconeMetadata
-        );
-        console.log("✅ Vector upserted to Pinecone.");
-      } catch (vecErr) {
-        console.error("⚠️ Pinecone Upsert Failed:", vecErr.message);
+        const embedding = await aiService.generateEmbedding(chunk);
+
+        // Safety Gate: Ensure valid embedding 
+        if (embedding && embedding.length > 0 && !embedding.every(n => n === 0)) {
+          vectorsToUpsert.push({
+            id: `${fileId}_${i}`, // Unique ID for each chunk
+            values: embedding,
+            metadata: {
+              text: chunk, // CRITICAL: The actual text for RAG
+              fileId: fileId.toString(),
+              sessionId: sessionId, // Explicitly set from validated variable
+              fileName: req.file.originalname,
+              chunkIndex: i,
+              userId: req.auth.userId,
+              folderId: folderId || ""
+            }
+          });
+        }
+      } catch (e) {
+        console.error(`❌ Failed to embed chunk ${i}:`, e.message);
       }
-    } else {
-      console.log("ℹ️ Skipped Pinecone upsert (No valid embedding).");
     }
 
-    console.log("✅ Success! File saved at:", newFile.filePath);
+    // 7. Batch Upsert to Pinecone
+    if (vectorsToUpsert.length > 0) {
+      await vectorService.upsertBatch(vectorsToUpsert);
+      console.log(`✅ Successfully upserted ${vectorsToUpsert.length} vector chunks.`);
+    } else {
+      console.warn("⚠️ No valid vectors generated. Skipping Pinecone upsert.");
+    }
+
+    // 8. Save to DB
+    await newFile.save();
+    console.log("✅ File saved to MongoDB.");
+
     res.status(200).json({ message: 'File processed', file: newFile });
 
   } catch (error) {

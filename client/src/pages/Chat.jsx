@@ -19,7 +19,7 @@ const Chat = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { refreshSessions } = useOutletContext() || {};
+  const { refreshSessions, setActiveSessionId } = useOutletContext() || {};
 
   // State
   const [currentSession, setCurrentSession] = useState(null);
@@ -39,6 +39,8 @@ const Chat = () => {
 
   // Init / Load session
   useEffect(() => {
+    if (setActiveSessionId) setActiveSessionId(sessionId); // UPDATE GLOBAL STATE
+
     if (location.state?.contextFiles && !sessionId) {
       if (hasInitialized.current) return;
       hasInitialized.current = true;
@@ -46,6 +48,11 @@ const Chat = () => {
     } else if (sessionId) {
       loadSessionDetails(sessionId);
     }
+
+    // Cleanup on unmount (Optional, but good practice to clear if leaving chat)
+    return () => {
+      if (setActiveSessionId) setActiveSessionId(null);
+    };
   }, [sessionId, location.state]);
 
   useEffect(() => {

@@ -31,6 +31,20 @@ const Layout = () => {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [apiToken, setApiToken] = useState("");
 
+  // ✅ Global Session Tracker with Persistence
+  const [activeSessionId, setActiveSessionId] = useState(() => {
+    return sessionStorage.getItem("activeSessionId") || null;
+  });
+
+  // Persist Active Session
+  useEffect(() => {
+    if (activeSessionId) {
+      sessionStorage.setItem("activeSessionId", activeSessionId);
+    } else {
+      sessionStorage.removeItem("activeSessionId");
+    }
+  }, [activeSessionId]);
+
   const menuRef = useRef(null);
   const userMenuRef = useRef(null);
 
@@ -363,7 +377,7 @@ const Layout = () => {
       {/* MAIN CONTENT */}
       {/* Add margin-left to clear the fixed sidebar */}
       <main className={`flex-1 flex flex-col relative z-0 overflow-hidden transition-all duration-300 h-screen ${isSidebarOpen ? 'ml-[270px]' : 'ml-0'}`}>
-        <Outlet context={{ refreshSessions: loadSessions }} />
+        <Outlet context={{ refreshSessions: loadSessions, activeSessionId, setActiveSessionId }} />
       </main>
 
       {/* Toggle Button for Mobile */}

@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 // Helper to generate token
 const generateToken = (id) => {
@@ -61,6 +62,14 @@ exports.loginUser = async (req, res) => {
   try {
     const user = await User.findOne({ email });
 
+    // TIMING ATTACK DISTINCTION MITIGATION
+    // If user is not found, compare against a dummy hash to consume similar time
+    if (!user) {
+      // Valid bcrypt hash (cost 10) to ensure substantial comparison time
+      const dummyHash = '$2a$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.9cGLcZEiGDMVr5yUP1KUOYTa';
+      await bcrypt.compare(password, dummyHash);
+    }
+
     if (user && (await user.matchPassword(password))) {
       console.log("✅ [Login] Success");
       res.json({
@@ -71,6 +80,7 @@ exports.loginUser = async (req, res) => {
       });
     } else {
       console.log("❌ [Login] Failed: Invalid Credentials");
+      // GENERIC MESSAGE for both cases as requested for security
       res.status(401).json({ error: 'Invalid email or password' });
     }
   } catch (error) {

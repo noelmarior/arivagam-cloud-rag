@@ -20,14 +20,33 @@ exports.upsertVector = async (id, vector, metadata) => {
   }
 };
 
-// Query Vector
-exports.queryVector = async (vector) => {
+// Batch Upsert
+exports.upsertBatch = async (vectors) => {
   try {
-    const queryResponse = await index.query({
+    if (!vectors || vectors.length === 0) return;
+    await index.upsert(vectors);
+    console.log(`✅ Batch Upserted ${vectors.length} vectors.`);
+  } catch (error) {
+    console.error("Pinecone Batch Upsert Error:", error);
+    throw error;
+  }
+};
+
+// Query Vector
+exports.queryVector = async (vector, filter = {}) => {
+  try {
+    const queryRequest = {
       vector: vector,
-      topK: 3, // Return top 3 results
+      topK: 5, // Increased to 5 for better context
       includeMetadata: true
-    });
+    };
+
+    // Apply Filter if provided (e.g., { fileId: { $in: [...] } })
+    if (filter && Object.keys(filter).length > 0) {
+      queryRequest.filter = filter;
+    }
+
+    const queryResponse = await index.query(queryRequest);
     return queryResponse.matches;
   } catch (error) {
     console.error("Pinecone Query Error:", error);

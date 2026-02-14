@@ -4,7 +4,7 @@ import api from '../api/axios';
 import { X, UploadCloud, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete }) => {
+const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete, sessionId }) => {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState({});
@@ -37,6 +37,13 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete }) => {
 
   const handleUpload = async () => {
     if (files.length === 0) return;
+
+    // ✅ UX Guard: REMOVED (Allow global uploads)
+    // if (!sessionId) {
+    //   toast.error("Please enter a Session (Chat) to upload files.");
+    //   return;
+    // }
+
     setUploading(true);
 
     for (const file of files) {
@@ -44,6 +51,11 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete }) => {
 
       const formData = new FormData();
       formData.append('file', file);
+
+      // ✅ Attach Session ID if available (Critical for RAG)
+      if (sessionId) {
+        formData.append('sessionId', sessionId);
+      }
 
       // Strict Folder ID Check
       if (folderId && folderId !== 'root' && folderId !== 'null') {

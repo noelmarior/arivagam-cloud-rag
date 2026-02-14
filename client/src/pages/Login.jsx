@@ -7,6 +7,7 @@ import landingPageImg from '../assets/landingpage.png';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   const { login, user } = useAuth();
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("🔵 Attempting Login with:", email);
+    setLoginError('');
 
     try {
       await login(email, password);
@@ -27,7 +29,9 @@ const Login = () => {
       navigate('/dashboard');
     } catch (err) {
       console.error("❌ Login Error:", err);
-      const errorMsg = err.response?.data?.error || "Login Failed";
+      // Generic error message for security, but prompt for account creation in UI
+      const errorMsg = "Invalid email or password";
+      setLoginError(errorMsg);
       toast.error(errorMsg);
     }
   };
@@ -54,8 +58,8 @@ const Login = () => {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full py-3 px-0 bg-transparent border-b border-gray-300 focus:border-black outline-none transition-all placeholder:text-gray-400"
+                onChange={(e) => { setEmail(e.target.value); setLoginError(''); }}
+                className={`w-full py-3 px-0 bg-transparent border-b ${loginError ? 'border-red-500' : 'border-gray-300'} focus:border-black outline-none transition-all placeholder:text-gray-400`}
                 placeholder="you@example.com"
                 required
               />
@@ -65,8 +69,8 @@ const Login = () => {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full py-3 px-0 bg-transparent border-b border-gray-300 focus:border-black outline-none transition-all placeholder:text-gray-400"
+                onChange={(e) => { setPassword(e.target.value); setLoginError(''); }}
+                className={`w-full py-3 px-0 bg-transparent border-b ${loginError ? 'border-red-500' : 'border-gray-300'} focus:border-black outline-none transition-all placeholder:text-gray-400`}
                 placeholder="••••••••"
                 required
               />
@@ -74,6 +78,25 @@ const Login = () => {
                 <Link to="/forgot-password" className="text-xs font-medium text-gray-500 hover:text-black">Forgot password?</Link>
               </div>
             </div>
+
+            {/* Error Message & Create Account Prompt */}
+            {loginError && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-md animate-fade-in">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-700 font-medium">{loginError}</p>
+                    <p className="text-xs text-red-600 mt-1">
+                      New here? <Link to="/register" className="font-bold underline hover:text-red-800">Create an account</Link>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"

@@ -6,10 +6,10 @@ dotenv.config();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // 1. Generate Embedding (Vector)
-// Model: text-embedding-004 (Output: 768 dimensions)
+// Model: gemini-embedding-001 (Output: 3072 dimensions)
 exports.generateEmbedding = async (text) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
     const cleanText = text.replace(/\0/g, '').trim().substring(0, 9000);
     const result = await model.embedContent(cleanText);
     const vector = result.embedding.values;
@@ -25,7 +25,7 @@ exports.generateEmbedding = async (text) => {
 // Model: gemini-2.5-pro (Fast & Free)
 exports.generateSummary = async (text) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
     const prompt = `Summarize the following text in 3 concise bullet points:\n\n${text}`;
 
     const result = await model.generateContent(prompt);
@@ -44,6 +44,18 @@ setInterval(() => {
   requestCount = 0;
 }, 60000);
 
+// 3. Raw Generation (No System Persona) - For JSON tasks
+exports.generateRaw = async (prompt) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch (error) {
+    console.error("Gemini Raw Gen Error:", error);
+    return null;
+  }
+};
+
 // 3. THE NEW HYBRID LOGIC ENGINE
 exports.generateResponse = async (userMessage, contextText, lengthInstruction) => {
   // Rate Limit Check
@@ -52,7 +64,7 @@ exports.generateResponse = async (userMessage, contextText, lengthInstruction) =
   }
   requestCount++;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
     // The "Brain" of your application
     const prompt = `
