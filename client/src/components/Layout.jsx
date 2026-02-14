@@ -1,8 +1,10 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { BookOpen, Plus, MessageSquare, MoreHorizontal, Trash2, Edit2, Pin, Menu, LogOut, ChevronUp, PenLine } from 'lucide-react';
+import { BookOpen, Plus, MessageSquare, MoreHorizontal, Trash2, Edit2, Pin, Menu, LogOut, ChevronUp, PenLine, Key } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import SourceSelector from './SourceSelector';
+import DeleteModal from './DeleteModal';
+import TokenModal from './TokenModal';
 import toast, { Toaster } from 'react-hot-toast';
 import logo from '../assets/logo.png';
 import useAuth from '../hooks/useAuth';
@@ -23,6 +25,11 @@ const Layout = () => {
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [apiToken, setApiToken] = useState("");
 
   const menuRef = useRef(null);
   const userMenuRef = useRef(null);
@@ -32,7 +39,17 @@ const Layout = () => {
     api.get('/sessions')
       .then(res => {
         if (Array.isArray(res.data)) {
-          setSessions(res.data);
+          // Explicit Client-Side Sort (Safety Net)
+          const sorted = res.data.sort((a, b) => {
+            // 1. Pinned first
+            if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+
+            // 2. Recency (lastActive > createdAt > 0)
+            const dateA = new Date(a.lastActive || a.createdAt || 0).getTime();
+            const dateB = new Date(b.lastActive || b.createdAt || 0).getTime();
+            return dateB - dateA; // Descending
+          });
+          setSessions(sorted);
         } else {
           console.warn("API did not return an array:", res.data);
           setSessions([]);
@@ -70,6 +87,18 @@ const Layout = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Load Token
+  useEffect(() => {
+    const storedToken = localStorage.getItem("ai_token");
+    if (storedToken) setApiToken(storedToken);
+  }, []);
+
+  const saveToken = (token) => {
+    localStorage.setItem("ai_token", token);
+    setApiToken(token);
+    toast.success("API Token saved!");
+  };
+
   const handleStartSession = (fileIds) => {
     setIsSourceModalOpen(false);
     navigate('/chat', { state: { contextFiles: fileIds } });
@@ -104,16 +133,26 @@ const Layout = () => {
     }
   };
 
-  const handleDelete = async (e, id) => {
+  const handleDelete = (e, id) => {
     e.stopPropagation();
     setActiveMenuId(null);
-    if (!window.confirm("Delete this session?")) return;
+    setSessionToDelete(id);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!sessionToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/sessions/${id}`);
-      setSessions(prev => prev.filter(s => s._id !== id));
-      if (location.pathname.includes(id)) navigate('/dashboard');
+      await api.delete(`/sessions/${sessionToDelete}`);
+      setSessions(prev => prev.filter(s => s._id !== sessionToDelete));
+      if (location.pathname.includes(sessionToDelete)) navigate('/dashboard');
+      setShowDeleteModal(false);
+      setSessionToDelete(null);
     } catch {
       toast.error("Delete failed");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -146,6 +185,22 @@ const Layout = () => {
         isOpen={isSourceModalOpen}
         onClose={() => setIsSourceModalOpen(false)}
         onStart={handleStartSession}
+      />
+
+      <DeleteModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+        title="Delete Session?"
+        message="Are you sure you want to delete this session? All chat history will be lost."
+      />
+
+      <TokenModal
+        isOpen={showTokenModal}
+        onClose={() => setShowTokenModal(false)}
+        onSave={saveToken}
+        initialToken={apiToken}
       />
 
       {/* SIDEBAR - FLOATING STYLE */}
@@ -187,6 +242,7 @@ const Layout = () => {
                 key={sess._id}
                 onClick={() => { if (!renamingId) navigate(`/chat/${sess._id}`) }}
                 className={`group relative flex items-center justify-between px-3 py-1 rounded-lg cursor-pointer select-none transition-all duration-200 border
+                  ${activeMenuId === sess._id ? 'z-30' : ''}
                   ${location.pathname.includes(sess._id)
                     ? 'bg-blue-50 border-blue-200 shadow-sm'
                     : 'bg-white border-transparent hover:-translate-y-1 hover:shadow-md hover:border-gray-100'
@@ -266,6 +322,17 @@ const Layout = () => {
                 <p className="text-gray-500 text-xs truncate">{user?.email || 'user@example.com'}</p>
               </div>
 
+              {/* API Token */}
+              <button
+                onClick={() => {
+                  setShowTokenModal(true);
+                  setShowUserMenu(false);
+                }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded-lg transition mt-1"
+              >
+                <Key className="w-4 h-4" /> API Token
+              </button>
+
               {/* Logout */}
               <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition mt-1">
                 <LogOut className="w-4 h-4" /> Log out
@@ -290,24 +357,27 @@ const Layout = () => {
             <ChevronUp className={`w-4 h-4 text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
           </button>
         </div>
-      </aside>
+      </aside >
+
 
       {/* MAIN CONTENT */}
       {/* Add margin-left to clear the fixed sidebar */}
       <main className={`flex-1 flex flex-col relative z-0 overflow-hidden transition-all duration-300 h-screen ${isSidebarOpen ? 'ml-[270px]' : 'ml-0'}`}>
-        <Outlet />
+        <Outlet context={{ refreshSessions: loadSessions }} />
       </main>
 
       {/* Toggle Button for Mobile */}
-      {!isSidebarOpen && (
-        <button
-          onClick={() => setIsSidebarOpen(true)}
-          className="absolute bottom-4 left-4 p-3 bg-blue-600 text-white rounded-full shadow-lg z-50 hover:bg-blue-700 md:hidden"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      )}
-    </div>
+      {
+        !isSidebarOpen && (
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="absolute bottom-4 left-4 p-3 bg-blue-600 text-white rounded-full shadow-lg z-50 hover:bg-blue-700 md:hidden"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )
+      }
+    </div >
   );
 };
 

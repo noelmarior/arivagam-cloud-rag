@@ -4,6 +4,7 @@ import api from '../api/axios';
 import { ArrowLeft, Calendar, FileText, Loader2, MessageSquare } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
+import { getFileTheme } from '../utils/themeHelper';
 
 const FileView = () => {
   const { id } = useParams();
@@ -27,79 +28,7 @@ const FileView = () => {
   }, [id]);
 
   // Helper: Get Theme based on file extension
-  const getFileTheme = (filename) => {
-    const ext = filename?.split('.').pop().toLowerCase();
-    if (['pdf'].includes(ext)) return {
-      base: 'red',
-      bg: 'bg-red-600',
-      text: 'text-red-600',
-      light: 'bg-red-50',
-      border: 'border-red-500',
-      hoverBg: 'hover:bg-red-700',
-      gradient: 'from-red-50 to-orange-50',
-      iconColor: 'text-red-600',
-      lightBorder: 'border-red-100',
-      titleColor: 'text-red-800',
-      proseColor: 'text-red-900/80',
-      Icon: FileText
-    };
-    if (['doc', 'docx'].includes(ext)) return {
-      base: 'blue',
-      bg: 'bg-blue-600',
-      text: 'text-blue-600',
-      light: 'bg-blue-50',
-      border: 'border-blue-500',
-      hoverBg: 'hover:bg-blue-700',
-      gradient: 'from-blue-50 to-indigo-50',
-      iconColor: 'text-blue-600',
-      lightBorder: 'border-blue-100',
-      titleColor: 'text-blue-800',
-      proseColor: 'text-blue-900/80',
-      Icon: FileText
-    };
-    if (['xls', 'xlsx', 'csv'].includes(ext)) return {
-      base: 'emerald',
-      bg: 'bg-emerald-600',
-      text: 'text-emerald-600',
-      light: 'bg-emerald-50',
-      border: 'border-emerald-500',
-      hoverBg: 'hover:bg-emerald-700',
-      gradient: 'from-emerald-50 to-teal-50',
-      iconColor: 'text-emerald-600',
-      lightBorder: 'border-emerald-100',
-      titleColor: 'text-emerald-800',
-      proseColor: 'text-emerald-900/80',
-      Icon: Calendar // Using Calendar as placeholder or FileSpreadsheet if imported
-    };
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return {
-      base: 'purple',
-      bg: 'bg-purple-600',
-      text: 'text-purple-600',
-      light: 'bg-purple-50',
-      border: 'border-purple-500',
-      hoverBg: 'hover:bg-purple-700',
-      gradient: 'from-purple-50 to-pink-50',
-      iconColor: 'text-purple-600',
-      lightBorder: 'border-purple-100',
-      titleColor: 'text-purple-800',
-      proseColor: 'text-purple-900/80',
-      Icon: FileText // Using FileText as placeholder or FileImage if imported
-    };
-    return {
-      base: 'gray',
-      bg: 'bg-gray-600',
-      text: 'text-gray-600',
-      light: 'bg-gray-50',
-      border: 'border-gray-500',
-      hoverBg: 'hover:bg-gray-700',
-      gradient: 'from-gray-50 to-slate-50',
-      iconColor: 'text-gray-600',
-      lightBorder: 'border-gray-100',
-      titleColor: 'text-gray-800',
-      proseColor: 'text-gray-900/80',
-      Icon: FileText
-    };
-  };
+  // const getFileTheme = (filename) => { ... } moved to utils/themeHelper.js
 
   const theme = file ? getFileTheme(file.fileName) : {};
 
@@ -130,11 +59,13 @@ const FileView = () => {
       <div className="max-w-5xl mx-auto h-full flex flex-col">
 
         {/* Back Button */}
+        {/* Back Button */}
         <Link
-          to="/dashboard"
-          className="flex items-center text-gray-500 hover:text-blue-600 mb-6 transition w-fit"
+          to={file?.folderId ? `/folder/${file.folderId}` : '/dashboard'}
+          className={`flex items-center justify-center ${theme.bg} text-white rounded-full w-10 h-10 ${theme.hoverBg} transition mb-6 shadow-md shrink-0`}
+          title={file?.folderId ? "Back to Folder" : "Back to Dashboard"}
         >
-          <ArrowLeft className="w-4 h-4 mr-1" /> Back to Dashboard
+          <ArrowLeft className="w-5 h-5" />
         </Link>
 
         {/* Header + Summary */}

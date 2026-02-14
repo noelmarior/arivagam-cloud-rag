@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import api from '../api/axios';
 import { X, UploadCloud, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -69,9 +70,19 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete }) => {
     setProgress({});
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <div
+        className="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
 
         {/* Header */}
         <div className="p-5 border-b border-gray-100 flex justify-between items-center">
@@ -142,7 +153,8 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete }) => {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

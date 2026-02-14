@@ -13,7 +13,8 @@ const TypewriterEffect = ({ content, onComplete }) => {
 
         const interval = setInterval(() => {
             if (indexRef.current < content.length) {
-                setDisplayedContent((prev) => prev + content.charAt(indexRef.current));
+                const charToAdd = content.charAt(indexRef.current);
+                setDisplayedContent((prev) => prev + charToAdd);
                 indexRef.current++;
             } else {
                 clearInterval(interval);

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import UploadModal from '../components/UploadModal';
+import DeleteModal from '../components/DeleteModal';
 import FolderCard from '../components/FolderCard';
 
 // Debounce helper for search
@@ -37,6 +38,8 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -120,7 +123,16 @@ export default function Dashboard() {
   // --- 4. Drag & Drop Logic ---
   const handleDragStart = (e, fileId) => {
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("fileId", fileId);
+
+    // Check if the dragged item is part of the current selection
+    // If so, drag ALL selected items. If not, drag only this item.
+    let itemsToDrag = [fileId];
+    if (selectedItems.includes(fileId)) {
+      itemsToDrag = [...selectedItems];
+    }
+
+    e.dataTransfer.setData("draggedItems", JSON.stringify(itemsToDrag));
+    e.dataTransfer.setData("fileId", fileId); // Fallback / Primary ID
   };
 
   const handleDragOver = (e, folderId) => {
@@ -135,23 +147,66 @@ export default function Dashboard() {
 
   const handleDrop = async (e, targetFolderId) => {
     e.preventDefault();
-    const fileId = e.dataTransfer.getData("fileId");
+    const draggedItemsStr = e.dataTransfer.getData("draggedItems");
+    const singleFileId = e.dataTransfer.getData("fileId");
     setDragOverFolderId(null);
 
-    if (!fileId || !targetFolderId) return;
+    // Parse items to move
+    let itemsToMove = [];
+    if (draggedItemsStr) {
+      try {
+        itemsToMove = JSON.parse(draggedItemsStr);
+      } catch (e) {
+        console.error("Failed to parse dragged items", e);
+      }
+    }
+
+    // Fallback if no list (shouldn't happen with new logic, but safe to keep)
+    if (itemsToMove.length === 0 && singleFileId) {
+      itemsToMove = [singleFileId];
+    }
+
+    if (itemsToMove.length === 0 || !targetFolderId) return;
+
+    // Prevent moving into itself (mostly for folders, but good check)
+    if (itemsToMove.includes(targetFolderId)) return;
 
     try {
       // Optimistic UI Update
       setData(prev => ({
         ...prev,
-        files: prev.files.filter(f => f._id !== fileId)
+        files: prev.files.filter(f => !itemsToMove.includes(f._id)),
+        folders: prev.folders.filter(f => !itemsToMove.includes(f._id))
       }));
 
-      await api.put(`/files/${fileId}`, { folderId: targetFolderId });
+      // Execute moves
+      // We'll run them appropriately based on item type
+      // Note: In handleDragStart we mixed fileIds. The backend move endpoint differs for files/folders?
+      // Looking at handleDelete, we distinguish types. We need to know types here too.
+      // But we only have IDs in drag data.
+      // We can look up items in `allItems` state since they are currently visible.
+
+      const movePromises = itemsToMove.map(async (id) => {
+        const item = allItems.find(i => i._id === id);
+        if (!item) return; // Should be in view
+
+        if (item.type === 'folder') {
+          await api.put(`/folders/${id}`, { parentId: targetFolderId });
+        } else {
+          await api.put(`/files/${id}`, { folderId: targetFolderId });
+        }
+      });
+
+      await Promise.all(movePromises);
+
+      // Clear selection after move
+      setSelectedItems([]);
+      setLastSelectedId(null);
+
+      refreshData(); // Refresh to be sure
     } catch (err) {
       console.error(err);
-      toast.error("Failed to move file");
-      // Refresh logic could be improved, but reused existing
+      toast.error("Failed to move some items");
       refreshData();
     }
   };
@@ -252,7 +307,19 @@ export default function Dashboard() {
     const item = allItems.find(i => i._id === id);
     if (!item) return;
     setEditingId(id);
-    setRenameValue(item.name || item.fileName);
+
+    // If file, strip extension for editing
+    if (item.type === 'file') {
+      const name = item.fileName;
+      const lastDotIndex = name.lastIndexOf('.');
+      if (lastDotIndex !== -1) {
+        setRenameValue(name.substring(0, lastDotIndex));
+      } else {
+        setRenameValue(name);
+      }
+    } else {
+      setRenameValue(item.name); // Folders just use name
+    }
     setContextMenu(null);
   };
 
@@ -274,15 +341,30 @@ export default function Dashboard() {
     const item = allItems.find(i => i._id === editingId);
     if (!item) return;
 
+    let finalName = renameValue.trim();
+
+    // Re-append extension for files
+    if (item.type === 'file') {
+      const oldName = item.fileName;
+      const lastDotIndex = oldName.lastIndexOf('.');
+      if (lastDotIndex !== -1) {
+        const extension = oldName.substring(lastDotIndex);
+        // Check if user accidentally typed extension?
+        // Requirement says "not allow me to change", so we strictly append original extension
+        // We assume renameValue is JUST the name part
+        finalName = finalName + extension;
+      }
+    }
+
     const oldName = item.type === 'folder' ? item.name : item.fileName;
-    if (oldName === renameValue) {
+    if (oldName === finalName) {
       setEditingId(null);
       return;
     }
 
     try {
       const endpoint = item.type === 'folder' ? `/folders/${item._id}` : `/files/${item._id}`;
-      const payload = item.type === 'folder' ? { name: renameValue } : { fileName: renameValue };
+      const payload = item.type === 'folder' ? { name: finalName } : { fileName: finalName };
 
       await api.put(endpoint, payload);
 
@@ -290,12 +372,12 @@ export default function Dashboard() {
       if (item.type === 'folder') {
         setData(prev => ({
           ...prev,
-          folders: prev.folders.map(f => f._id === editingId ? { ...f, name: renameValue } : f)
+          folders: prev.folders.map(f => f._id === editingId ? { ...f, name: finalName } : f)
         }));
       } else {
         setData(prev => ({
           ...prev,
-          files: prev.files.map(f => f._id === editingId ? { ...f, fileName: renameValue } : f)
+          files: prev.files.map(f => f._id === editingId ? { ...f, fileName: finalName } : f)
         }));
       }
     } catch (err) {
@@ -345,14 +427,18 @@ export default function Dashboard() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (selectedItems.length === 0) return;
-    if (!window.confirm(`Delete ${selectedItems.length} items?`)) return;
     setContextMenu(null);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (selectedItems.length === 0) return;
+    setIsDeleting(true);
 
     try {
       for (const id of selectedItems) {
-        // Try both or identify type. Since we have allItems in current view:
         const item = allItems.find(i => i._id === id);
         if (item) {
           const endpoint = item.type === 'folder' ? `/folders/${id}` : `/files/${id}`;
@@ -366,9 +452,12 @@ export default function Dashboard() {
         files: prev.files.filter(f => !selectedItems.includes(f._id))
       }));
       setSelectedItems([]);
+      setShowDeleteModal(false);
     } catch (e) {
       console.error(e);
       toast.error("Delete failed");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -712,6 +801,7 @@ export default function Dashboard() {
                 onRenameSubmit={submitRename}
                 onRenameCancel={() => setEditingId(null)}
                 onClick={(e) => { e.stopPropagation(); handleItemClick(e, item); }}
+                onNameClick={(e) => handleNameClick(e, item)}
                 onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClick(item); }}
                 onContextMenu={(e) => handleContextMenu(e, item)}
                 isDropTarget={isDropTarget}
@@ -800,6 +890,15 @@ export default function Dashboard() {
         onClose={() => setIsUploadOpen(false)}
         folderId={folderId}
         onUploadComplete={handleUploadComplete}
+      />
+
+      <DeleteModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+        title={`Delete ${selectedItems.length} Item${selectedItems.length !== 1 ? 's' : ''}?`}
+        message="Are you sure you want to delete these items? This action cannot be undone."
       />
 
       {/* FAB - Click Outside Listener is handled via a Ref for the container */}

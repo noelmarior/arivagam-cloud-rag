@@ -22,7 +22,7 @@ exports.generateEmbedding = async (text) => {
 };
 
 // 2. Generate Summary
-// Model: gemini-1.5-flash (Fast & Free)
+// Model: gemini-2.5-pro (Fast & Free)
 exports.generateSummary = async (text) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -92,6 +92,28 @@ exports.generateResponse = async (userMessage, contextText, lengthInstruction) =
 
   } catch (error) {
     console.error("AI Response Error:", error);
-    return "I'm having trouble analyzing the documents right now. Please try again.";
+
+    // 1. Get current time in IST
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
+    const istTime = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+
+    // 2. Set the target to today at 13:30 (1:30 PM)
+    const resetTime = new Date(istTime);
+    resetTime.setHours(13, 30, 0, 0);
+
+    // 3. If it's already past 13:30, the reset is tomorrow (though 429s usually reset daily)
+    if (istTime > resetTime) {
+      resetTime.setDate(resetTime.getDate() + 1);
+    }
+
+    // 4. Calculate Difference
+    const diffMs = resetTime - istTime;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+    const timeString = `${diffHours} hrs ${diffMins} mins`;
+
+    return `Maximum number of requests exceeded. Please try again in ${timeString}.`;
   }
 };

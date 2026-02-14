@@ -1,7 +1,6 @@
 import React from 'react';
-import {
-    Folder, FileText, FileSpreadsheet, FileImage, File
-} from 'lucide-react';
+import { Folder } from 'lucide-react';
+import { getFileTheme } from '../utils/themeHelper';
 
 const FolderCard = ({
     item,
@@ -13,6 +12,7 @@ const FolderCard = ({
     onRenameSubmit,
     onRenameCancel,
     onClick,
+    onNameClick,
     onDoubleClick,
     onContextMenu,
     isDropTarget,
@@ -26,25 +26,20 @@ const FolderCard = ({
 }) => {
     const active = isSelected;
 
+    // Get Theme for files
+    const theme = item.type === 'folder' ? null : getFileTheme(item.fileName || item.name);
+
     // Icon Helper
     const getIcon = () => {
         if (item.type === 'folder') {
             return <Folder className={`w-7 h-7 ${active ? 'text-blue-700' : 'text-blue-500'}`} />;
         }
-        const ext = item.fileName ? item.fileName.split('.').pop().toLowerCase() : '';
-        if (['pdf'].includes(ext)) {
-            return <FileText className={`w-7 h-7 ${active ? 'text-red-700' : 'text-red-600'}`} />;
-        }
-        if (['doc', 'docx'].includes(ext)) {
-            return <FileText className={`w-7 h-7 ${active ? 'text-blue-700' : 'text-blue-600'}`} />;
-        }
-        if (['xls', 'xlsx', 'csv'].includes(ext)) {
-            return <FileSpreadsheet className={`w-7 h-7 ${active ? 'text-emerald-700' : 'text-emerald-600'}`} />;
-        }
-        if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'mov'].includes(ext)) {
-            return <FileImage className={`w-7 h-7 ${active ? 'text-violet-700' : 'text-violet-600'}`} />;
-        }
-        return <File className={`w-7 h-7 ${active ? 'text-gray-700' : 'text-gray-400'}`} />;
+
+        // Use Theme Icon
+        const Icon = theme.Icon;
+        const colorClass = active ? theme.text.replace('600', '700') : theme.text;
+
+        return <Icon className={`w-7 h-7 ${colorClass}`} />;
     };
 
     // Dynamic Border/BG Logic based on type
@@ -79,29 +74,41 @@ const FolderCard = ({
         >
             {/* Icon - with dynamic background */}
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-colors 
-        ${active ? 'bg-white' : 'bg-gray-50 group-hover:bg-gray-100'}`}>
+        ${active ? 'bg-white' : (item.type === 'folder' ? 'bg-blue-50 group-hover:bg-blue-100' : theme.light)}`}>
                 {getIcon()}
             </div>
 
             {/* Name / Rename Input */}
             {isEditing ? (
-                <input
-                    autoFocus
-                    type="text"
-                    className="w-full text-center text-sm font-medium bg-white border border-blue-500 rounded px-1 py-0.5 outline-none shadow-lg z-50"
-                    value={renameValue}
-                    onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={onRenameSubmit}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') onRenameSubmit();
-                        if (e.key === 'Escape') onRenameCancel();
-                        e.stopPropagation();
-                    }}
+                <div
+                    className="flex items-center justify-center w-full z-50 px-1"
                     onClick={(e) => e.stopPropagation()}
-                />
+                >
+                    <input
+                        autoFocus
+                        type="text"
+                        className={`text-center text-sm font-medium bg-white border border-blue-500 py-0.5 outline-none shadow-lg min-w-0
+                            ${item.type === 'file' ? 'rounded-l border-r-0 flex-1' : 'rounded w-full'}
+                        `}
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={onRenameSubmit}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') onRenameSubmit();
+                            if (e.key === 'Escape') onRenameCancel();
+                            e.stopPropagation();
+                        }}
+                    />
+                    {item.type === 'file' && (
+                        <span className="text-sm font-medium text-gray-500 bg-gray-100 border border-blue-500 border-l-0 rounded-r py-0.5 px-1 shadow-lg cursor-not-allowed select-none">
+                            {item.fileName.substring(item.fileName.lastIndexOf('.'))}
+                        </span>
+                    )}
+                </div>
             ) : (
                 <span
-                    className={`text-sm font-medium truncate w-full text-center px-1 rounded
+                    onClick={onNameClick}
+                    className={`text-sm font-medium truncate w-full text-center px-1 rounded hover:bg-gray-100/50 cursor-text
             ${active ? 'text-blue-900' : 'text-gray-700'}
           `}
                 >

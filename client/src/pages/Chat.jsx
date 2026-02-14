@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import api from '../api/axios';
 import {
   MessageSquare, Plus, Send, MoreVertical, FileText, Check, Loader2, Folder, SendHorizontal, PenLine
@@ -12,12 +12,14 @@ import { useNotepad } from '../context/NotepadContext';
 import ReasoningLoader from '../components/ReasoningLoader';
 import TypewriterEffect from '../components/TypewriterEffect';
 import logo from '../assets/logo.png';
+import { getFileTheme } from '../utils/themeHelper';
 
 const Chat = () => {
   const { addNote } = useNotepad();
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { refreshSessions } = useOutletContext() || {};
 
   // State
   const [currentSession, setCurrentSession] = useState(null);
@@ -96,7 +98,6 @@ const Chat = () => {
       setLoadingSession(false);
     }
   };
-
   // ✅ 3. UPDATED HANDLE SEND
   const handleSend = async (e) => {
     if (e) e.preventDefault(); // Handle form submission
@@ -120,12 +121,18 @@ const Chat = () => {
       setMessages(prev =>
         prev.map(msg => msg._id === tempId ? { ...res.data, role: 'assistant', shouldAnimate: true } : msg)
       );
+
+      // Refresh sidebar list to update recency
+      if (refreshSessions) refreshSessions();
+
     } catch (err) {
       console.error("Message Send Error:", err);
       setMessages(prev => prev.filter(msg => msg._id !== tempId));
       toast.error("Failed to get response");
     }
   };
+
+  // ... (handlers)
 
   const handleAddSources = async (fileIds) => {
     setIsAddSourceOpen(false);
@@ -220,24 +227,27 @@ const Chat = () => {
               <Loader2 className="animate-spin w-5 h-5 text-gray-400" />
             </div>
           ) : (
-            currentSession?.sourceFiles?.map((file, idx) => (
-              <div key={idx} className="flex flex-col p-3 bg-white border border-gray-200 rounded-xl shadow-sm">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="p-1.5 bg-blue-50 rounded-md text-blue-600">
-                    <FileText className="w-4 h-4" />
+            currentSession?.sourceFiles?.map((file, idx) => {
+              const theme = getFileTheme(file.fileName);
+              return (
+                <div key={idx} className="flex flex-col p-3 bg-white border border-gray-200 rounded-xl shadow-sm">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`p-1.5 ${theme.light} rounded-md ${theme.text}`}>
+                      <theme.Icon className="w-4 h-4" />
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700 truncate">
+                      {file.fileName}
+                    </span>
                   </div>
-                  <span className="text-sm font-semibold text-gray-700 truncate">
-                    {file.fileName}
-                  </span>
+                  <div className="flex items-center gap-1.5 ml-1">
+                    <Folder className="w-3 h-3 text-gray-400" />
+                    <span className="text-xs text-gray-400 truncate">
+                      {file.folderId ? file.folderId.name : "My Drive (Root)"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 ml-1">
-                  <Folder className="w-3 h-3 text-gray-400" />
-                  <span className="text-xs text-gray-400 truncate">
-                    {file.folderId ? file.folderId.name : "My Drive (Root)"}
-                  </span>
-                </div>
-              </div>
-            ))
+              )
+            })
           )}
 
           <button

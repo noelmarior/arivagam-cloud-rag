@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import api from '../api/axios';
 import {
   Folder, FileText, X, ChevronRight, CheckCircle, Loader2, Search,
   FileSpreadsheet, FileImage, File
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getFileTheme } from '../utils/themeHelper';
 
 const SourceSelector = ({ isOpen, onClose, onStart, customLabel }) => {
   const [currentFolder, setCurrentFolder] = useState(null); // null = root
@@ -66,22 +68,46 @@ const SourceSelector = ({ isOpen, onClose, onStart, customLabel }) => {
   };
 
   // Helper to get icon based on file extension
+  // Replaced local getIcon with themeHelper, but kept component structure
+
+  // We can't easily replace the whole component's internal helper without refactoring props.
+  // Actually, let's use the helper inside the map loop directly or wrapping helper.
+
+  // Let's just update the getIcon function to use our helper, but adapt it to return JSX
+  // Or better, just inline the usage in the render loop.
+  // However, getIcon is used to return JSX directly.
+
   const getIcon = (item, isSelected) => {
-    const ext = item.fileName ? item.fileName.split('.').pop().toLowerCase() : '';
+    const theme = getFileTheme(item.fileName);
     const sizeClass = "w-6 h-6";
+    // Override colors if selected?
+    // The requirement was specific about session view.
+    // But consistency is good.
+    // If selected, maybe just use the theme color but darker? Or keep the theme color?
+    // The original code had specific logic for selected state (blue border etc).
+    // The icon color itself changed based on selection in original code (e.g. text-red-600 vs text-red-500).
 
-    if (['pdf'].includes(ext)) return <FileText className={`${sizeClass} ${isSelected ? 'text-red-600' : 'text-red-500'}`} />;
-    if (['doc', 'docx'].includes(ext)) return <FileText className={`${sizeClass} ${isSelected ? 'text-blue-700' : 'text-blue-600'}`} />;
-    if (['xls', 'xlsx', 'csv'].includes(ext)) return <FileSpreadsheet className={`${sizeClass} ${isSelected ? 'text-green-700' : 'text-green-600'}`} />;
-    if (['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext)) return <FileImage className={`${sizeClass} ${isSelected ? 'text-purple-700' : 'text-purple-600'}`} />;
+    // Let's stick to the theme colors for consistency, and maybe brightness shift if selected.
+    // Or just use the theme.iconColor.
 
-    // Default
-    return <File className={`${sizeClass} ${isSelected ? 'text-gray-600' : 'text-gray-400'}`} />;
+    const colorClass = isSelected ? theme.text.replace('600', '700') : theme.text;
+
+    return <theme.Icon className={`${sizeClass} ${colorClass}`} />;
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+  return ReactDOM.createPortal(
+    <div
+      className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center backdrop-blur-sm p-4"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <div
+        className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
 
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
@@ -176,7 +202,8 @@ const SourceSelector = ({ isOpen, onClose, onStart, customLabel }) => {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
