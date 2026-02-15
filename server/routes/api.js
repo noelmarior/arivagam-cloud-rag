@@ -13,14 +13,14 @@ const styleController = require('../controllers/styleController');
 // --- MULTER SETUP (File Uploads) ---
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); 
+    cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname)); 
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage: storage }); 
+const upload = multer({ storage: storage });
 
 // --- MIDDLEWARE ---
 const requireAuth = require('../middleware/requireAuth');
@@ -38,9 +38,9 @@ router.delete('/folders/:id', requireAuth, folderController.deleteFolder); // âœ
 
 // 2. File Routes
 router.post('/upload', requireAuth, upload.single('file'), fileController.uploadFile);
-router.get('/files', fileController.getAllFiles);
+router.get('/files', requireAuth, fileController.getAllFiles);
 router.get('/files/search', requireAuth, fileController.searchFiles);
-router.get('/files/:id', fileController.getFileById);
+router.get('/files/:id', requireAuth, fileController.getFileById);
 router.put('/files/:id', requireAuth, fileController.updateFile); // âœ… Keep only this PUT route
 router.delete('/files/:id', requireAuth, fileController.deleteFile);
 

@@ -1,10 +1,10 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { BookOpen, Plus, MessageSquare, MoreHorizontal, Trash2, Edit2, Pin, Menu, LogOut, ChevronUp, PenLine, Key } from 'lucide-react';
+import { BookOpen, Plus, MessageSquare, MoreHorizontal, Trash2, Edit2, Pin, Menu, LogOut, ChevronUp, PenLine } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import SourceSelector from './SourceSelector';
 import DeleteModal from './DeleteModal';
-import TokenModal from './TokenModal';
+
 import toast, { Toaster } from 'react-hot-toast';
 import logo from '../assets/logo.png';
 import useAuth from '../hooks/useAuth';
@@ -28,8 +28,7 @@ const Layout = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showTokenModal, setShowTokenModal] = useState(false);
-  const [apiToken, setApiToken] = useState("");
+
 
   // ✅ Global Session Tracker with Persistence
   const [activeSessionId, setActiveSessionId] = useState(() => {
@@ -101,17 +100,7 @@ const Layout = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Load Token
-  useEffect(() => {
-    const storedToken = localStorage.getItem("ai_token");
-    if (storedToken) setApiToken(storedToken);
-  }, []);
 
-  const saveToken = (token) => {
-    localStorage.setItem("ai_token", token);
-    setApiToken(token);
-    toast.success("API Token saved!");
-  };
 
   const handleStartSession = (fileIds) => {
     setIsSourceModalOpen(false);
@@ -210,12 +199,7 @@ const Layout = () => {
         message="Are you sure you want to delete this session? All chat history will be lost."
       />
 
-      <TokenModal
-        isOpen={showTokenModal}
-        onClose={() => setShowTokenModal(false)}
-        onSave={saveToken}
-        initialToken={apiToken}
-      />
+
 
       {/* SIDEBAR - FLOATING STYLE */}
       <aside className={`
@@ -336,16 +320,7 @@ const Layout = () => {
                 <p className="text-gray-500 text-xs truncate">{user?.email || 'user@example.com'}</p>
               </div>
 
-              {/* API Token */}
-              <button
-                onClick={() => {
-                  setShowTokenModal(true);
-                  setShowUserMenu(false);
-                }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded-lg transition mt-1"
-              >
-                <Key className="w-4 h-4" /> API Token
-              </button>
+
 
               {/* Logout */}
               <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition mt-1">

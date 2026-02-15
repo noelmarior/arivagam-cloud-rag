@@ -33,10 +33,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('token');
+    // 1. Clear all local data
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // 2. Clear sensitive variables from memory
     setUser(null);
-    window.location.href = '/login';
+    window.location.href = '/login'; // Force a hard reload to clear React state
   };
 
   return (

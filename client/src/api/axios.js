@@ -6,7 +6,8 @@ const instance = axios.create({
 
 // ✅ INTERCEPTOR: Automatically add Token to headers
 instance.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  // Check sessionStorage first (where AuthContext saves it), then localStorage
+  const token = sessionStorage.getItem('token') || localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

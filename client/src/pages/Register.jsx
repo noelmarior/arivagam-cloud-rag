@@ -3,12 +3,71 @@ import { useState, useEffect } from 'react';
 import useAuth from '../hooks/useAuth';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Eye, EyeOff, Loader, Check, X } from 'lucide-react';
+import axios from 'axios';
 import landingPageImg from '../assets/landingpage.png';
 
 const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  // Email Validation State
+  const [emailStatus, setEmailStatus] = useState('idle'); // idle, checking, available, taken, error
+  const [isEmailValid, setIsEmailValid] = useState(false);
+
+  const checkEmail = async (emailValue) => {
+    if (!emailValue || !emailValue.includes('@')) {
+      setEmailStatus('idle');
+      setIsEmailValid(false);
+      return;
+    }
+
+    setEmailStatus('checking');
+    try {
+      const response = await axios.post('http://localhost:5000/api/auth/check-email', { email: emailValue });
+      if (response.data.exists) {
+        setEmailStatus('taken');
+        setIsEmailValid(false);
+      } else {
+        setEmailStatus('available');
+        setIsEmailValid(true);
+      }
+    } catch (error) {
+      console.error("Email check failed", error);
+      setEmailStatus('error');
+    }
+  };
+
+  // Debounce email check
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (email) checkEmail(email);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [email]);
+
+
+  // Regex: At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char (any non-alphanumeric)
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+
+  const handlePasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+
+    if (!newPassword) {
+      setPasswordError('');
+      return;
+    }
+
+    if (!passwordRegex.test(newPassword)) {
+      setPasswordError('Password must have 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special char.');
+    } else {
+      setPasswordError('');
+    }
+  };
   const { register, user } = useAuth();
   const navigate = useNavigate();
 
@@ -20,6 +79,22 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (passwordError) {
+      toast.error("Please fix password errors");
+      return;
+    }
+
+    if (emailStatus === 'taken') {
+      toast.error("Email is already registered");
+      return;
+    }
+
+    if (!isEmailValid && emailStatus !== 'available') {
+      toast.error("Please enter a valid email");
+      return;
+    }
+
     try {
       await register(name, email, password);
       navigate('/dashboard');
@@ -66,17 +141,32 @@ const Register = () => {
                 placeholder="you@example.com"
                 required
               />
+              <div className="absolute right-0 top-9">
+                {emailStatus === 'checking' && <Loader className="w-5 h-5 animate-spin text-gray-400" />}
+                {emailStatus === 'available' && <Check className="w-5 h-5 text-green-500" />}
+                {emailStatus === 'taken' && <X className="w-5 h-5 text-red-500" />}
+              </div>
+              {emailStatus === 'taken' && <p className="text-red-500 text-xs mt-1">Email is already registered</p>}
+              {emailStatus === 'available' && <p className="text-green-500 text-xs mt-1">Email is available</p>}
             </div>
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full py-3 px-0 bg-transparent border-b border-gray-300 focus:border-black outline-none transition-all placeholder:text-gray-400"
+                onChange={handlePasswordChange}
+                className={`w-full py-3 px-0 bg-transparent border-b ${passwordError ? 'border-red-500' : 'border-gray-300'} focus:border-black outline-none transition-all placeholder:text-gray-400 pr-10`}
                 placeholder="Create a strong password"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-0 top-9 text-gray-500 hover:text-black"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+              {passwordError && <p className="text-red-500 text-xs mt-1">{passwordError}</p>}
             </div>
             <button
               type="submit"

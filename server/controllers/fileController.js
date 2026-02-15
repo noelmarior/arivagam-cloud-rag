@@ -335,7 +335,7 @@ exports.uploadFile = async (req, res) => {
 // 2. Get All Files (For Dashboard)
 exports.getAllFiles = async (req, res) => {
   try {
-    const files = await File.find()
+    const files = await File.find({ userId: req.auth.userId })
       .select('fileName summary createdAt fileType');
 
     res.json(files);
@@ -347,7 +347,7 @@ exports.getAllFiles = async (req, res) => {
 // 3. Get Single File (For Deep Dive View)
 exports.getFileById = async (req, res) => {
   try {
-    const file = await File.findById(req.params.id);
+    const file = await File.findOne({ _id: req.params.id, userId: req.auth.userId });
     if (!file) {
       return res.status(404).json({ error: 'File not found' });
     }

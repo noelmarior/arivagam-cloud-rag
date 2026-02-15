@@ -15,12 +15,19 @@ const requireAuth = async (req, res, next) => {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret123');
 
+      // 🔍 BRUTAL DEBUG LOGS
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🔑 Token (last 10):', token.slice(-10));
+      console.log('👤 ID from Token:', decoded.id);
+      console.log('📍 Endpoint:', req.method, req.path);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
       // Get user from the token
       req.auth = { userId: decoded.id }; // Attach to request object
 
       next();
     } catch (error) {
-      console.error(error);
+      console.error("JWT Verification Error:", error.message);
       res.status(401).json({ error: 'Not authorized, token failed' });
     }
   }

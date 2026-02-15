@@ -23,6 +23,17 @@ exports.registerUser = async (req, res) => {
       return res.status(400).json({ error: 'Please add all fields' });
     }
 
+    // Password Validation
+    // Password Validation
+    // Regex: At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char (any non-alphanumeric)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      console.log("❌ [Register] Weak password");
+      return res.status(400).json({
+        error: 'Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).'
+      });
+    }
+
     // 2. Check if user exists
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -86,5 +97,27 @@ exports.loginUser = async (req, res) => {
   } catch (error) {
     console.error("🔥 [Login] CRASH:", error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+// @desc    Check if email exists
+// @route   POST /api/auth/check-email
+exports.checkEmail = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  try {
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.json({ exists: true, message: "Email already exists" });
+    } else {
+      return res.json({ exists: false, message: "Email is available" });
+    }
+  } catch (error) {
+    console.error("🔥 [CheckEmail] Error:", error);
+    res.status(500).json({ error: "Server error checking email" });
   }
 };

@@ -22,10 +22,10 @@ exports.generateEmbedding = async (text) => {
 };
 
 // 2. Generate Summary
-// Model: gemini-2.5-pro (Fast & Free)
+// Model: gemini-2.5-flash (Fast & Free)
 exports.generateSummary = async (text) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const prompt = `Summarize the following text in 3 concise bullet points:\n\n${text}`;
 
     const result = await model.generateContent(prompt);
@@ -33,6 +33,32 @@ exports.generateSummary = async (text) => {
     return response.text();
   } catch (error) {
     console.error("Gemini Summary Error:", error);
+
+    // Dynamic 429 Error Handling
+    if (error.message?.includes('429') || error.status === 429) {
+      // 1. Get current time in IST (UTC + 5:30)
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const istTime = new Date(utcTime + istOffset);
+
+      // 2. Set Target: 1:30 PM (13:30) IST
+      const resetTime = new Date(istTime);
+      resetTime.setHours(13, 30, 0, 0);
+
+      // 3. If passed 1:30 PM, target tomorrow
+      if (istTime > resetTime) {
+        resetTime.setDate(resetTime.getDate() + 1);
+      }
+
+      // 4. Calculate Duration
+      const diffMs = resetTime - istTime;
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      return `Not able to produce AI Summary due to daily rate limit, try deleting and uploading again after ${hours} hrs ${mins} mins`;
+    }
+
     throw error;
   }
 };
@@ -47,7 +73,7 @@ setInterval(() => {
 // 3. Raw Generation (No System Persona) - For JSON tasks
 exports.generateRaw = async (prompt) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     return result.response.text();
   } catch (error) {
@@ -64,7 +90,7 @@ exports.generateResponse = async (userMessage, contextText, lengthInstruction) =
   }
   requestCount++;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // The "Brain" of your application
     const prompt = `
