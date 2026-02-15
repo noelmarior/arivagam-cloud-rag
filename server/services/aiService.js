@@ -25,7 +25,7 @@ exports.generateEmbedding = async (text) => {
 // Model: gemini-2.5-flash (Fast & Free)
 exports.generateSummary = async (text) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
     const prompt = `Summarize the following text in 3 concise bullet points:\n\n${text}`;
 
     const result = await model.generateContent(prompt);
@@ -73,7 +73,7 @@ setInterval(() => {
 // 3. Raw Generation (No System Persona) - For JSON tasks
 exports.generateRaw = async (prompt) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
     const result = await model.generateContent(prompt);
     return result.response.text();
   } catch (error) {
@@ -90,7 +90,7 @@ exports.generateResponse = async (userMessage, contextText, lengthInstruction) =
   }
   requestCount++;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
     // The "Brain" of your application
     const prompt = `
