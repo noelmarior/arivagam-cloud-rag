@@ -1,5 +1,6 @@
 node_modules
 .env
+scripts
 dist
 build
 .DS_Store

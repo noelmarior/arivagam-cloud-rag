@@ -44,11 +44,17 @@ const FileView = () => {
     return <div className="p-8 text-center text-gray-500">File not found.</div>;
   }
 
+  // Determine the best path to show: viewable -> original (if browser supported) -> legacy
+  // For iframe viewer, we prefer viewablePath (PDF/HTML)
+  const displayPath = file.viewablePath || file.filePath;
+
   // Helper: build correct backend file URL
-  const getFileUrl = (filePath) => {
-    if (!filePath) return null;
-    return `http://localhost:5000/${filePath.replace(/\\/g, "/")}`;
+  const getFileUrl = (pathStr) => {
+    if (!pathStr) return null;
+    return `http://localhost:5000/${pathStr.replace(/\\/g, "/")}`;
   };
+
+  const fileUrl = getFileUrl(displayPath);
 
   const handleStartChat = () => {
     navigate('/chat', { state: { contextFiles: [id] } });
@@ -58,7 +64,6 @@ const FileView = () => {
     <div className="h-full overflow-y-auto p-8 bg-gray-50">
       <div className="max-w-5xl mx-auto h-full flex flex-col">
 
-        {/* Back Button */}
         {/* Back Button */}
         <Link
           to={file?.folderId ? `/folder/${file.folderId}` : '/dashboard'}
@@ -70,10 +75,7 @@ const FileView = () => {
 
         {/* Header + Summary */}
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 mb-6">
-
-          {/* 1. FLEX CONTAINER: Changed to 'justify-between' to push button to the right */}
           <div className="flex items-center justify-between mb-6">
-
             {/* LEFT SIDE: Icon & Title */}
             <div className="flex items-center gap-4">
               <div className={`p-4 rounded-xl ${theme.light}`}>
@@ -97,7 +99,6 @@ const FileView = () => {
             >
               <MessageSquare className="w-4 h-4" /> Start Session
             </button>
-
           </div>
 
           {/* AI Summary */}
@@ -115,9 +116,9 @@ const FileView = () => {
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[800px]">
           <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
             <h2 className="font-bold text-gray-700">Document Viewer</h2>
-            {file.filePath && (
+            {displayPath && (
               <a
-                href={getFileUrl(file.filePath)}
+                href={fileUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="text-sm text-blue-600 hover:underline"
@@ -128,9 +129,9 @@ const FileView = () => {
           </div>
 
           <div className="flex-1 bg-gray-100 relative">
-            {file.filePath ? (
+            {displayPath ? (
               <iframe
-                src={getFileUrl(file.filePath)}
+                src={fileUrl}
                 className="w-full h-full absolute inset-0"
                 title="PDF Viewer"
               />
@@ -140,16 +141,17 @@ const FileView = () => {
                   Original PDF not available (old upload).
                 </p>
                 <div className="prose max-w-none text-left bg-white p-6 rounded shadow text-sm h-96 overflow-auto">
-                  {file.content}
+                  {file.summary || file.content}
                 </div>
               </div>
             )}
           </div>
         </div>
-
       </div>
     </div>
   );
 };
+
+
 
 export default FileView;

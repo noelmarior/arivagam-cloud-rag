@@ -276,7 +276,9 @@ exports.uploadFile = async (req, res) => {
       summary,
       userId: req.auth.userId,
       folderId,
-      filePath: finalFilePath,
+      originalPath: req.file.path, // 1. Raw File
+      viewablePath: finalFilePath, // 2. Converted File
+      // filePath: finalFilePath, // LEGACY: Kept for backward compat if needed, but removing to force dual-path usage
       pineconeId: fileId.toString() // Base ID, but vectors will be chunked
     });
 
@@ -367,17 +369,39 @@ exports.deleteFile = async (req, res) => {
     const file = await File.findOne({ _id: id, userId });
     if (!file) return res.status(404).json({ error: "File not found" });
 
-    // 2. Delete Physical File
-    if (file.filePath) {
-      const absolutePath = path.resolve(file.filePath);
-      console.log(`🗑️ Attempting to delete: ${absolutePath}`);
-
-      if (fs.existsSync(absolutePath)) {
-        fs.unlinkSync(absolutePath);
-        console.log("✅ Physical file deleted.");
-      } else {
-        console.warn("⚠️ File not found on disk:", absolutePath);
+    // 2. Delete Physical Files (Atomic Deletion)
+    const deleteFromDisk = (filePath) => {
+      if (!filePath) return;
+      try {
+        const absolutePath = path.resolve(filePath);
+        if (fs.existsSync(absolutePath)) {
+          fs.unlinkSync(absolutePath);
+          console.log(`✅ Deleted: ${filePath}`);
+        } else {
+          console.warn(`⚠️ File not found on disk: ${filePath}`);
+        }
+      } catch (err) {
+        console.error(`❌ Error deleting ${filePath}:`, err.message);
       }
+    };
+
+    console.log("🗑️ Deleting Dual Paths:", {
+      original: file.originalPath,
+      viewable: file.viewablePath,
+      legacy: file.filePath
+    });
+
+    // Delete Original Raw File
+    if (file.originalPath) deleteFromDisk(file.originalPath);
+
+    // Delete Converted Viewable File (only if different)
+    if (file.viewablePath && file.viewablePath !== file.originalPath) {
+      deleteFromDisk(file.viewablePath);
+    }
+
+    // Fallback: Delete Legacy Path (if exists and different)
+    if (file.filePath && file.filePath !== file.originalPath && file.filePath !== file.viewablePath) {
+      deleteFromDisk(file.filePath);
     }
 
     // 3. Delete from Pinecone

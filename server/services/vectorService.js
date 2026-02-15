@@ -54,4 +54,38 @@ exports.queryVector = async (vector, filter = {}) => {
   }
 };
 
-exports.deleteVector = async (id) => { await index.deleteOne(id); };
+exports.deleteVector = async (fileId) => {
+  try {
+    const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+    const index = pc.index(process.env.PINECONE_INDEX_NAME);
+
+    // LOGIC: Starter Indexes do not support delete-by-metadata.
+    // We must Query IDs first, then Delete by IDs.
+    const filter = { fileId: { $eq: fileId } };
+
+    // 1. Fetch matching vector IDs (Limit 1000 chunks max per file)
+    const queryResponse = await index.query({
+      vector: Array(3072).fill(0), // Use dummy vector (Dimension must match index!)
+      topK: 1000,
+      filter: filter,
+      includeValues: false,
+      includeMetadata: false
+    });
+
+    const matches = queryResponse.matches;
+    if (matches.length > 0) {
+      const idsToDelete = matches.map(m => m.id);
+      console.log(`🔍 Found ${idsToDelete.length} vectors to delete for file ${fileId}`);
+
+      // 2. Delete by IDs
+      await index.deleteMany(idsToDelete);
+      console.log(`✅ Deleted ${idsToDelete.length} vectors.`);
+    } else {
+      console.log(`⚠️ No vectors found for file ${fileId} to delete.`);
+    }
+
+  } catch (error) {
+    console.error("❌ Pinecone Delete Error:", error.message);
+    throw error;
+  }
+};
