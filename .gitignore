@@ -1,5 +1,26 @@
+# Dependencies
 node_modules/
+
+# Secrets
 .env
-dist
-build
+
+# Server Ignores (Must include prefix since it's in the root)
+server/scripts/
+server/uploads/
+server/dist/
+
+# Client Ignores
+client/dist/
+client/build/
+client/.vscode/
+
+# System/Logs
 .DS_Store
+*.log
+npm-debug.log*
+
+# Add these for completeness
+server/uploads/*
+!server/uploads/.gitkeep
+.vercel/
+.render/
