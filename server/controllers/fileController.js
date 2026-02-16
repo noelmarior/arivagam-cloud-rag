@@ -10,86 +10,62 @@ const pdf = require('pdf-extraction');
 const mammoth = require('mammoth');
 const xlsx = require('xlsx');
 const Tesseract = require('tesseract.js');
-const PDFDocument = require('pdfkit');
+const axios = require('axios');
 
-// Helper: Convert content to PDF
-const convertToPdf = (content, originalPath, type) => {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new PDFDocument();
-      const newFileName = `converted-${Date.now()}.pdf`;
-      const newPath = path.join(path.dirname(originalPath), newFileName);
-      const writeStream = fs.createWriteStream(newPath);
+// ✅ FIX 1: Import Cloudinary
+const cloudinary = require('cloudinary').v2;
 
-      doc.pipe(writeStream);
+// Configure Cloudinary (Safe to call multiple times)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-      // Add appropriate content based on type
-      if (type === 'image') {
-        try {
-          // Fit image to page
-          doc.image(originalPath, {
-            fit: [500, 700],
-            align: 'center',
-            valign: 'center'
-          });
-        } catch (imgErr) {
-          console.error("Image embed error:", imgErr);
-          doc.text("Failed to embed image. Extracted text below:\n\n");
-          doc.text(content || "No text extracted.");
-        }
-      } else {
-        // Text-based content (TXT, DOCX, XLSX)
-        // Add a title or metadata if needed, but keeping it simple for now
-        doc.fontSize(12).text(content || "No text content extracted.", {
-          align: 'left'
-        });
-      }
-
-      doc.end();
-
-      writeStream.on('finish', () => {
-        resolve(newPath);
-      });
-
-      writeStream.on('error', (err) => {
-        reject(err);
-      });
-
-    } catch (err) {
-      reject(err);
-    }
-  });
+const chunkText = (text, size = 1000) => {
+  const chunks = [];
+  for (let i = 0; i < text.length; i += size) {
+    chunks.push(text.slice(i, i + size));
+  }
+  return chunks;
 };
 
-// Helper: Extract text (RAM + Disk safe)
 const extractText = async (file) => {
   const mimeType = file.mimetype;
+  let fileBuffer = file.buffer;
+
+  // 1. Unified Buffer Loader
+  if (!fileBuffer) {
+    if (file.path.startsWith('http')) {
+      try {
+        console.log(`☁️ Fetching buffer from Cloudinary: ${file.path}`);
+        const response = await axios.get(file.path, {
+          responseType: 'arraybuffer',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        });
+        fileBuffer = Buffer.from(response.data);
+      } catch (err) {
+        throw new Error(`Failed to download file from Cloud: ${err.message}`);
+      }
+    } else {
+      fileBuffer = fs.readFileSync(file.path);
+    }
+  }
 
   // Strategy 1: Plain Text
   if (mimeType === 'text/plain') {
-    return file.buffer
-      ? file.buffer.toString('utf8')
-      : fs.readFileSync(file.path, 'utf8');
+    return fileBuffer.toString('utf8');
   }
 
-  // Strategy 2: PDF (Universal Handler)
+  // Strategy 2: PDF
   if (mimeType === 'application/pdf') {
     try {
-      const pdfBuffer = file.buffer
-        ? file.buffer
-        : fs.readFileSync(file.path);
-
-      if (!pdfBuffer || pdfBuffer.length === 0) {
-        throw new Error("PDF buffer is empty");
-      }
-
-      const data = await pdf(pdfBuffer);
+      if (!fileBuffer || fileBuffer.length === 0) throw new Error("PDF buffer is empty");
+      const data = await pdf(fileBuffer);
       const text = data.text ? data.text.trim() : "";
-
-      if (text.length < 10) {
-        throw new Error("PDF text is empty. This might be a scanned image.");
-      }
-
+      if (text.length < 10) throw new Error("PDF text is empty. This might be a scanned image.");
       return text;
     } catch (error) {
       console.error("PDF Parsing Error:", error.message);
@@ -100,11 +76,7 @@ const extractText = async (file) => {
   // Strategy 3: Images (OCR)
   if (mimeType.startsWith('image/')) {
     try {
-      const imageBuffer = file.buffer
-        ? file.buffer
-        : fs.readFileSync(file.path);
-
-      const result = await Tesseract.recognize(imageBuffer, 'eng');
+      const result = await Tesseract.recognize(fileBuffer, 'eng');
       return result.data.text.trim();
     } catch (error) {
       console.error("OCR Error:", error.message);
@@ -112,14 +84,10 @@ const extractText = async (file) => {
     }
   }
 
-  // Strategy 4: DOCX (Mammoth)
+  // Strategy 4: DOCX
   if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
     try {
-      const buffer = file.buffer
-        ? file.buffer
-        : fs.readFileSync(file.path);
-
-      const result = await mammoth.extractRawText({ buffer: buffer });
+      const result = await mammoth.extractRawText({ buffer: fileBuffer });
       return result.value.trim();
     } catch (error) {
       console.error("DOCX Error:", error.message);
@@ -127,23 +95,17 @@ const extractText = async (file) => {
     }
   }
 
-  // Strategy 5: XLSX (SheetJS)
+  // Strategy 5: XLSX
   if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
     try {
-      const buffer = file.buffer
-        ? file.buffer
-        : fs.readFileSync(file.path);
-
-      const workbook = xlsx.read(buffer, { type: 'buffer' });
+      const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
       let text = "";
-
       workbook.SheetNames.forEach(sheetName => {
         const sheet = workbook.Sheets[sheetName];
         text += `Sheet: ${sheetName}\n`;
         text += xlsx.utils.sheet_to_csv(sheet);
         text += "\n\n";
       });
-
       return text.trim();
     } catch (error) {
       console.error("XLSX Error:", error.message);
@@ -154,90 +116,26 @@ const extractText = async (file) => {
   throw new Error('Unsupported file type. Allowed: .txt, .pdf, .docx, .xlsx, images');
 };
 
-// Helper: Convert Excel to HTML
-const convertToHtml = (originalPath) => {
-  return new Promise((resolve, reject) => {
-    try {
-      const workbook = xlsx.readFile(originalPath);
-      let htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            body { font-family: sans-serif; padding: 20px; }
-            table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { bg-color: #f2f2f2; }
-            h2 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-          </style>
-        </head>
-        <body>
-      `;
-
-      workbook.SheetNames.forEach(sheetName => {
-        const sheet = workbook.Sheets[sheetName];
-        const htmlTable = xlsx.utils.sheet_to_html(sheet);
-        if (htmlTable) {
-          htmlContent += `<h2>${sheetName}</h2>`;
-          htmlContent += htmlTable;
-        }
-      });
-
-      htmlContent += '</body></html>';
-
-      const newFileName = `converted-${Date.now()}.html`;
-      const newPath = path.join(path.dirname(originalPath), newFileName);
-
-      fs.writeFileSync(newPath, htmlContent);
-      resolve(newPath);
-    } catch (err) {
-      reject(err);
-    }
-  });
-};
-
-// ... (existing convertToPdf function remains unchanged) ...
-
-// Helper: Chunk text
-const chunkText = (text, size = 1000) => {
-  const chunks = [];
-  for (let i = 0; i < text.length; i += size) {
-    chunks.push(text.slice(i, i + size));
-  }
-  return chunks;
-};
-
 // 1. Upload File
 exports.uploadFile = async (req, res) => {
   try {
-    // 0. Guard
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    // 1. Params
-    console.log("Full Request Body:", req.body); // DEBUG LOG
-    // Capture Session ID (Body or Query)
+    console.log("Full Request Body:", req.body);
     const sessionId = req.body.sessionId || req.query.sessionId;
-
-    // Validation Guard: REMOVED (Allow global uploads from Dashboard)
-    // if (!sessionId) {
-    //   return res.status(400).json({ error: "Session ID is required..." });
-    // }
-
     let { folderId } = req.body;
     if (!folderId || folderId === 'root' || folderId === 'null') folderId = null;
 
     console.log(`📄 Processing: ${req.file.originalname} (${req.file.mimetype}) for Session: ${sessionId}`);
+    console.log(`🔗 Cloudinary URL: ${req.file.path}`);
 
-    // 2. Extract text (Original Content)
     const content = await extractText(req.file);
-    // Explicit Check: Ensure text is not empty before proceeding
+
     if (!content || content.trim().length === 0) {
       throw new Error("Extracted text is empty. Cannot process empty file.");
     }
-
     console.log(`✅ Extracted ${content.length} characters.`);
 
-    // 3. AI Summary
     let summary = "";
     try {
       summary = await aiService.generateSummary(content);
@@ -246,43 +144,23 @@ exports.uploadFile = async (req, res) => {
       summary = "Summary unavailable.";
     }
 
-    // 4. Conversion Logic (PDF or HTML)
-    let finalFilePath = req.file.path;
-    let finalMimeType = req.file.mimetype;
-
-    if (req.file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-      try {
-        const htmlPath = await convertToHtml(req.file.path);
-        finalFilePath = htmlPath;
-        finalMimeType = 'text/html';
-      } catch (e) { console.error("Excel conversion failed", e); }
-    }
-    else if (req.file.mimetype !== 'application/pdf') {
-      try {
-        const type = req.file.mimetype.startsWith('image/') ? 'image' : 'text';
-        finalFilePath = await convertToPdf(content, req.file.path, type);
-        finalMimeType = 'application/pdf';
-      } catch (e) { console.error("PDF conversion failed", e); }
-    }
-
-    // 5. Create Mongo Document
     const fileId = new mongoose.Types.ObjectId();
     const newFile = new File({
       _id: fileId,
       fileName: req.file.originalname,
-      fileType: finalMimeType,
+      fileType: req.file.mimetype,
       size: req.file.size,
       content,
       summary,
       userId: req.auth.userId,
       folderId,
-      originalPath: req.file.path, // 1. Raw File
-      viewablePath: finalFilePath, // 2. Converted File
-      // filePath: finalFilePath, // LEGACY: Kept for backward compat if needed, but removing to force dual-path usage
-      pineconeId: fileId.toString() // Base ID, but vectors will be chunked
+      originalPath: req.file.path,
+      viewablePath: req.file.path,
+      publicId: req.file.filename,
+      pineconeId: fileId.toString(),
+      sessionId: sessionId || null
     });
 
-    // 6. Chunking & Embedding (The Core Logic Fix)
     const chunks = chunkText(content, 1000);
     const vectorsToUpsert = [];
 
@@ -292,16 +170,14 @@ exports.uploadFile = async (req, res) => {
       const chunk = chunks[i];
       try {
         const embedding = await aiService.generateEmbedding(chunk);
-
-        // Safety Gate: Ensure valid embedding 
         if (embedding && embedding.length > 0 && !embedding.every(n => n === 0)) {
           vectorsToUpsert.push({
-            id: `${fileId}_${i}`, // Unique ID for each chunk
+            id: `${fileId}_${i}`,
             values: embedding,
             metadata: {
-              text: chunk, // CRITICAL: The actual text for RAG
+              text: chunk,
               fileId: fileId.toString(),
-              sessionId: sessionId, // Explicitly set from validated variable
+              sessionId: sessionId,
               fileName: req.file.originalname,
               chunkIndex: i,
               userId: req.auth.userId,
@@ -314,7 +190,6 @@ exports.uploadFile = async (req, res) => {
       }
     }
 
-    // 7. Batch Upsert to Pinecone
     if (vectorsToUpsert.length > 0) {
       await vectorService.upsertBatch(vectorsToUpsert);
       console.log(`✅ Successfully upserted ${vectorsToUpsert.length} vector chunks.`);
@@ -322,10 +197,8 @@ exports.uploadFile = async (req, res) => {
       console.warn("⚠️ No valid vectors generated. Skipping Pinecone upsert.");
     }
 
-    // 8. Save to DB
     await newFile.save();
     console.log("✅ File saved to MongoDB.");
-
     res.status(200).json({ message: 'File processed', file: newFile });
 
   } catch (error) {
@@ -334,99 +207,115 @@ exports.uploadFile = async (req, res) => {
   }
 };
 
-// 2. Get All Files (For Dashboard)
+// 2. Get All Files
 exports.getAllFiles = async (req, res) => {
   try {
     const files = await File.find({ userId: req.auth.userId })
-      .select('fileName summary createdAt fileType');
-
+      .select('fileName summary createdAt fileType originalPath viewablePath');
     res.json(files);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// 3. Get Single File (For Deep Dive View)
+// 3. Get Single File
 exports.getFileById = async (req, res) => {
   try {
     const file = await File.findOne({ _id: req.params.id, userId: req.auth.userId });
-    if (!file) {
-      return res.status(404).json({ error: 'File not found' });
-    }
+    if (!file) return res.status(404).json({ error: 'File not found' });
     res.json(file);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// 4. Delete File (Physical + Pinecone + Mongo)
+// 4. Delete File (CLOUD UPDATED) ☁️
+// ✅ FIX 2: Changed 'const deleteFile' to 'exports.deleteFile' so Router can find it
 exports.deleteFile = async (req, res) => {
   try {
-    const { id } = req.params;
+    const fileId = req.params.id;
     const userId = req.auth.userId;
 
-    // 1. Find the file
-    const file = await File.findOne({ _id: id, userId });
-    if (!file) return res.status(404).json({ error: "File not found" });
+    const file = await File.findOne({ _id: fileId, userId });
+    if (!file) {
+      return res.status(404).json({ error: 'File not found' });
+    }
 
-    // 2. Delete Physical Files (Atomic Deletion)
-    const deleteFromDisk = (filePath) => {
-      if (!filePath) return;
+    console.log(`🗑️ Requesting delete for: ${file.fileName}`);
+
+    // 1. Determine Resource Type
+    const resourceType = file.fileType.startsWith('image/') ? 'image' : 'raw';
+
+    // 2. Resolve Public ID (The Fix)
+    let publicId = file.publicId;
+
+    // 🚨 FALLBACK: If publicId is missing in DB, extract it from the URL
+    if (!publicId && file.originalPath) {
+      console.warn("⚠️ Missing Public ID in DB. Attempting to extract from URL...");
       try {
-        const absolutePath = path.resolve(filePath);
-        if (fs.existsSync(absolutePath)) {
-          fs.unlinkSync(absolutePath);
-          console.log(`✅ Deleted: ${filePath}`);
-        } else {
-          console.warn(`⚠️ File not found on disk: ${filePath}`);
+        // Example URL: .../upload/v123456/arivagam_uploads/File-Name.pdf
+        const urlParts = file.originalPath.split('/');
+        // Find the part that looks like a version (v123...)
+        const versionIndex = urlParts.findIndex(part => part.startsWith('v') && !isNaN(Number(part.substring(1))));
+
+        if (versionIndex !== -1) {
+          // The ID is everything AFTER the version
+          let extractedId = urlParts.slice(versionIndex + 1).join('/');
+
+          // Remove file extension (Cloudinary IDs usually don't have them, but URLs do)
+          // Note: For Raw files, sometimes we need to keep checking.
+          // We try stripping the extension first as that's the standard naming convention we used.
+          if (extractedId.lastIndexOf('.') > -1) {
+            extractedId = extractedId.substring(0, extractedId.lastIndexOf('.'));
+          }
+          publicId = extractedId;
+          console.log(`🔍 Extracted ID from URL: ${publicId}`);
         }
       } catch (err) {
-        console.error(`❌ Error deleting ${filePath}:`, err.message);
+        console.error("❌ Failed to extract ID from URL:", err);
       }
-    };
-
-    console.log("🗑️ Deleting Dual Paths:", {
-      original: file.originalPath,
-      viewable: file.viewablePath,
-      legacy: file.filePath
-    });
-
-    // Delete Original Raw File
-    if (file.originalPath) deleteFromDisk(file.originalPath);
-
-    // Delete Converted Viewable File (only if different)
-    if (file.viewablePath && file.viewablePath !== file.originalPath) {
-      deleteFromDisk(file.viewablePath);
     }
 
-    // Fallback: Delete Legacy Path (if exists and different)
-    if (file.filePath && file.filePath !== file.originalPath && file.filePath !== file.viewablePath) {
-      deleteFromDisk(file.filePath);
-    }
-
-    // 3. Delete from Pinecone
-    if (file.pineconeId && file.pineconeId !== "pending") {
+    // 3. DELETE FROM CLOUDINARY
+    if (publicId) {
       try {
-        await vectorService.deleteVector(file.pineconeId);
-        console.log("✅ Pinecone vector deleted.");
-      } catch (e) {
-        console.error("❌ Pinecone delete failed:", e.message);
+        console.log(`☁️ Deleting from Cloudinary (${resourceType}): ${publicId}`);
+        const cloudResult = await cloudinary.uploader.destroy(publicId, {
+          resource_type: resourceType,
+          invalidate: true
+        });
+        console.log("☁️ Cloudinary Response:", cloudResult);
+      } catch (cloudErr) {
+        console.error("⚠️ Failed to delete from Cloudinary:", cloudErr.message);
       }
+    } else {
+      console.error("❌ Could not determine Public ID. Cloud file orphan created.");
     }
 
-    // 4. Delete from MongoDB
-    await File.deleteOne({ _id: id });
+    // 4. DELETE VECTORS (Connected)
+    try {
+      // We pass 'fileId' because your vectorService queries by metadata: { fileId: { $eq: fileId } }
+      // Note: ensure vectorService is imported at the top of this file!
+      await vectorService.deleteVector(fileId);
+      console.log("✅ Pinecone vectors cleanup initiated.");
+    } catch (vecErr) {
+      console.error("⚠️ Pinecone cleanup warning:", vecErr.message);
+      // We do NOT throw error here, so DB delete proceeds even if Pinecone fails
+    }
+
+    // 5. DELETE FROM DB
+    await File.deleteOne({ _id: fileId });
     console.log("✅ Database record deleted.");
 
-    res.json({ message: "File permanently deleted" });
+    res.json({ message: 'File deleted successfully' });
 
   } catch (error) {
-    console.error("Delete Error:", error);
+    console.error("❌ Delete Error:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// 5. Search Files and Folders ✅ FIXED - ONLY ONE VERSION
+// 5. Search Files
 exports.searchFiles = async (req, res) => {
   try {
     const { query } = req.query;
@@ -436,36 +325,30 @@ exports.searchFiles = async (req, res) => {
       return res.json({ files: [], folders: [] });
     }
 
-    console.log(`🔎 Searching for: "${query}" by user: ${userId}`);
-
-    // Search files
     const files = await File.find({
       userId,
       fileName: { $regex: query, $options: 'i' }
     }).select('fileName fileType size createdAt folderId');
 
-    // Search folders
-    const folders = await Folder.find({
+    const folders = require('../models/Folder').find({
       userId,
       name: { $regex: query, $options: 'i' }
     }).select('name createdAt parentId');
 
-    console.log(`✅ Found ${files.length} files and ${folders.length} folders`);
+    const [foundFiles, foundFolders] = await Promise.all([files, folders]);
 
-    res.json({ files, folders });
+    res.json({ files: foundFiles, folders: foundFolders });
   } catch (error) {
-    console.error("Search error:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// 6. Update File (Rename or Move)
+// 6. Update File
 exports.updateFile = async (req, res) => {
   try {
     const updates = {};
     if (req.body.fileName) updates.fileName = req.body.fileName;
     if (req.body.folderId !== undefined) {
-      // Allow null for moving to root
       updates.folderId = req.body.folderId === 'root' ? null : req.body.folderId;
     }
 
@@ -476,7 +359,6 @@ exports.updateFile = async (req, res) => {
     );
 
     if (!file) return res.status(404).json({ error: 'File not found' });
-
     res.json(file);
   } catch (error) {
     res.status(500).json({ error: error.message });

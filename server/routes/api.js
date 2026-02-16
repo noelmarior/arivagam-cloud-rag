@@ -10,16 +10,46 @@ const fileController = require('../controllers/fileController');
 const folderController = require('../controllers/folderController');
 const styleController = require('../controllers/styleController');
 
-// --- MULTER SETUP (File Uploads) ---
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+
+// --- MULTER SETUP CLOUDINARY (File Uploads) ---
+// Configure Cloudinary with your keys
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
+
+// Configure Storage Engine
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    // 1. Initialize logic variables
+    let resourceType = 'auto'; // Default: let Cloudinary decide
+
+    // 2. FORCE "raw" for specific non-image types
+    // Cloudinary sometimes fails to "auto-detect" these correctly from Multer
+    if (file.mimetype === 'text/plain' ||                // .txt
+      file.mimetype === 'application/pdf' ||             // .pdf  
+      file.mimetype.includes('msword') ||              // .doc
+      file.mimetype.includes('wordprocessingml') ||    // .docx
+      file.mimetype.includes('spreadsheet') ||         // .xlsx
+      file.mimetype.includes('presentation')) {        // .pptx
+      resourceType = 'raw';
+    }
+
+    return {
+      folder: 'arivagam_uploads',
+      resource_type: resourceType,
+      // 3. CRITICAL: We REMOVED 'allowed_formats'. 
+      // Why? Because the library validates 'txt' against IMAGE formats and crashes.
+      // We accept the file here, and let your Controller handle the logic.
+      public_id: file.originalname.split('.')[0] + '-' + Date.now()
+    };
+  },
+});
+
 const upload = multer({ storage: storage });
 
 // --- MIDDLEWARE ---
@@ -37,7 +67,19 @@ router.put('/folders/:id', requireAuth, folderController.updateFolder); // ✅ A
 router.delete('/folders/:id', requireAuth, folderController.deleteFolder); // ✅ Add this for folder delete
 
 // 2. File Routes
-router.post('/upload', requireAuth, upload.single('file'), fileController.uploadFile);
+router.post('/upload', requireAuth, (req, res, next) => {
+  console.log("📨 Request received at /upload endpoint");
+
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      // This is the error log you are missing!
+      console.error("❌ MULTER/CLOUDINARY CRASH:", err);
+      return res.status(500).json({ error: err.message, details: err });
+    }
+    console.log("✅ Multer accepted file, passing to controller...");
+    next();
+  });
+}, fileController.uploadFile);
 router.get('/files', requireAuth, fileController.getAllFiles);
 router.get('/files/search', requireAuth, fileController.searchFiles);
 router.get('/files/:id', requireAuth, fileController.getFileById);

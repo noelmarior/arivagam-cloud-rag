@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import api from '../api/axios';
-import { ArrowLeft, Calendar, FileText, Loader2, MessageSquare } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Calendar, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx'; // 📦 NEW: Import Excel Parser
+import api from '../api/axios';
+import { toast } from 'react-hot-toast';
 import { getFileTheme } from '../utils/themeHelper';
 
 const FileView = () => {
@@ -11,6 +12,7 @@ const FileView = () => {
   const navigate = useNavigate();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [excelData, setExcelData] = useState(null); // 📊 State for Spreadsheet Data
 
   useEffect(() => {
     const fetchFile = async () => {
@@ -27,8 +29,26 @@ const FileView = () => {
     fetchFile();
   }, [id]);
 
-  // Helper: Get Theme based on file extension
-  // const getFileTheme = (filename) => { ... } moved to utils/themeHelper.js
+  // 🏗️ NATIVE EXCEL RENDERER LOGIC
+  useEffect(() => {
+    if (!file) return;
+
+    const displayUrl = file.viewablePath || file.originalPath;
+    const isExcel = file.fileType.includes('spreadsheet') || file.fileType.includes('excel');
+
+    if (isExcel && displayUrl) {
+      fetch(displayUrl)
+        .then((res) => res.arrayBuffer())
+        .then((buffer) => {
+          const workbook = XLSX.read(buffer);
+          const sheetName = workbook.SheetNames[0]; // Load first sheet
+          const sheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 }); // Array of Arrays
+          setExcelData(jsonData);
+        })
+        .catch((err) => console.error("Failed to parse Excel:", err));
+    }
+  }, [file]);
 
   const theme = file ? getFileTheme(file.fileName) : {};
 
@@ -44,20 +64,93 @@ const FileView = () => {
     return <div className="p-8 text-center text-gray-500">File not found.</div>;
   }
 
-  // Determine the best path to show: viewable -> original (if browser supported) -> legacy
-  // For iframe viewer, we prefer viewablePath (PDF/HTML)
-  const displayPath = file.viewablePath || file.filePath;
-
-  // Helper: build correct backend file URL
-  const getFileUrl = (pathStr) => {
-    if (!pathStr) return null;
-    return `http://localhost:5000/${pathStr.replace(/\\/g, "/")}`;
-  };
-
-  const fileUrl = getFileUrl(displayPath);
+  // 1. CLOUD LOGIC
+  const displayUrl = file.viewablePath || file.originalPath;
+  const fileType = file.fileType || '';
 
   const handleStartChat = () => {
     navigate('/chat', { state: { contextFiles: [id] } });
+  };
+
+  // 2. VIEWER LOGIC (The "Magic" Switch)
+  const renderViewerContent = () => {
+
+    // STRATEGY A: Text Files (.txt)
+    // FIX: Use 'min-h-full' instead of 'h-full' to allow scrolling in parent container
+    if (fileType === 'text/plain') {
+      return (
+        <div className="w-full min-h-full p-8 bg-white">
+          <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">
+            {file.content || "No text content available."}
+          </pre>
+        </div>
+      );
+    }
+
+    // STRATEGY B: Excel Files (Native HTML Render) 📊
+    // This replaces the broken Google Viewer for .xlsx files
+    if (fileType.includes('spreadsheet') || fileType.includes('excel')) {
+      if (!excelData) return <div className="p-10 text-center text-gray-400">Loading Spreadsheet...</div>;
+
+      return (
+        <div className="w-full min-h-full bg-white overflow-visible">
+          <table className="min-w-full border-collapse text-sm text-left">
+            <tbody>
+              {excelData.map((row, rowIndex) => (
+                <tr key={rowIndex} className={rowIndex === 0 ? "bg-gray-100 font-bold border-b-2 border-gray-300 sticky top-0 shadow-sm" : "border-b border-gray-100 hover:bg-gray-50"}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} className="p-3 border-r border-gray-100 last:border-none whitespace-nowrap text-gray-700">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    if (!displayUrl) {
+      return (
+        <div className="p-10 text-center">
+          <p className="text-gray-500 mb-4">Original file not available.</p>
+          <div className="prose max-w-none text-left bg-white p-6 rounded shadow text-sm h-96 overflow-auto">
+            {file.summary || file.content || "No content available."}
+          </div>
+        </div>
+      );
+    }
+
+    // STRATEGY C: Office Documents (DOCX, PPTX) -> Use Google Docs Viewer
+    if (
+      fileType.includes('wordprocessingml') || // DOCX
+      fileType.includes('presentation') ||     // PPTX
+      fileType.includes('msword') ||
+      fileType === 'application/pdf'
+    ) {
+      const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(displayUrl)}&embedded=true`;
+      return (
+        <iframe
+          src={googleViewerUrl}
+          className="absolute inset-0 w-full h-full border-none"
+          title="Office Document Viewer"
+        />
+      );
+    }
+
+    // STRATEGY D: Images
+    if (fileType.startsWith('image/')) {
+      return (
+        <div className="min-h-full w-full flex items-center justify-center p-4">
+          <img
+            src={displayUrl}
+            alt="File Content"
+            className="max-w-full h-auto shadow-lg rounded"
+          />
+        </div>
+      );
+    }
   };
 
   return (
@@ -92,7 +185,7 @@ const FileView = () => {
               </div>
             </div>
 
-            {/* RIGHT SIDE: Chat Button (NEW) */}
+            {/* RIGHT SIDE: Chat Button */}
             <button
               onClick={handleStartChat}
               className={`flex items-center gap-2 px-4 py-2 ${theme.bg} text-white rounded-lg ${theme.hoverBg} transition shadow-md`}
@@ -112,46 +205,31 @@ const FileView = () => {
           </div>
         </div>
 
-        {/* PDF Viewer */}
+        {/* Viewer Container - FIXED SCROLLING */}
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[800px]">
-          <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-            <h2 className="font-bold text-gray-700">Document Viewer</h2>
-            {displayPath && (
+
+          {/* Header */}
+          <div className="h-12 border-b border-gray-100 flex justify-between items-center bg-gray-50 px-4 shrink-0">
+            <h2 className="font-bold text-gray-700 text-sm uppercase tracking-wide">Document Viewer</h2>
+            {displayUrl && (
               <a
-                href={fileUrl}
+                href={displayUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm text-blue-600 hover:underline"
+                className="text-xs text-blue-600 hover:underline font-medium"
               >
                 Open in New Tab
               </a>
             )}
           </div>
 
-          <div className="flex-1 bg-gray-100 relative">
-            {displayPath ? (
-              <iframe
-                src={fileUrl}
-                className="w-full h-full absolute inset-0"
-                title="PDF Viewer"
-              />
-            ) : (
-              <div className="p-10 text-center">
-                <p className="text-gray-500 mb-4">
-                  Original PDF not available (old upload).
-                </p>
-                <div className="prose max-w-none text-left bg-white p-6 rounded shadow text-sm h-96 overflow-auto">
-                  {file.summary || file.content}
-                </div>
-              </div>
-            )}
+          <div className="flex-1 relative bg-gray-100 overflow-auto">
+            {renderViewerContent()}
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-
 
 export default FileView;
