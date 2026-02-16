@@ -1,13 +1,14 @@
 import axios from 'axios';
 
-// 🚀 DYNAMIC BASE URL
-// In Production (Vercel), this will use the VITE_API_URL environment variable.
-// In Development (Localhost), it defaults to your local server.
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// 🚀 PRODUCTION-FIRST BASE URL
+const baseURL = import.meta.env.VITE_API_URL;
+
+// Debug log to see what the app is actually using (Check this in your browser console!)
+console.log("🔗 Current API Base URL:", baseURL || "FALLBACK TO LOCALHOST");
 
 const instance = axios.create({
-  baseURL: baseURL,
-  withCredentials: true // Important for CORS cookies if you use them
+  baseURL: baseURL || 'http://localhost:5000/api',
+  withCredentials: true
 });
 
 // ✅ INTERCEPTOR: Automatically add Token to headers
