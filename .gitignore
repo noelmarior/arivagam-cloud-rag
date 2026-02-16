@@ -1,26 +1,33 @@
 # Dependencies
 node_modules/
+client/node_modules/
+server/node_modules/
 
-# Secrets
+# Secrets (CRITICAL)
 .env
+.env.local
+.env.production
+.env.development
 
-# Server Ignores (Must include prefix since it's in the root)
-server/scripts/
-server/uploads/
-server/dist/
-
-# Client Ignores
+# Build outputs
+dist/
+build/
 client/dist/
 client/build/
-client/.vscode/
+server/dist/
 
-# System/Logs
+# System & Logs
 .DS_Store
 *.log
 npm-debug.log*
+Thumbs.db
+.vscode/
+.idea/
 
-# Add these for completeness
+# Local Storage (if you use local uploads as fallback)
 server/uploads/*
 !server/uploads/.gitkeep
+
+# Deployment Cache
 .vercel/
 .render/
