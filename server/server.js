@@ -46,6 +46,11 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Server is healthy' });
 });
 
+// server/server.js (Add this near your other routes)
+app.get('/', (req, res) => {
+  res.send('🚀 Arivagam API is live and healthy!');
+});
+
 // --- 4. ERROR HANDLING ---
 // (Uncomment if you have the errorHandler file)
 // app.use(errorHandler);
