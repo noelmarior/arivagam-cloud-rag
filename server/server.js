@@ -21,8 +21,15 @@ const app = express();
 
 // Configure CORS (Only once!)
 app.use(cors({
-  origin: '*', // Frontend URL
-  credentials: true
+  origin: [
+    'http://localhost:5173',  // Vite dev (local)
+    'http://localhost:5174',  // Vite alternative port
+    'https://arivagam-ek5unya51-noel-marios-projects.vercel.app', // Your Vercel URL
+    /^https:\/\/.*\.vercel\.app$/ // All Vercel preview deployments
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+  // credentials: true // ❌ Removed - not needed for JWT in headers
 }));
 
 // Parse JSON
