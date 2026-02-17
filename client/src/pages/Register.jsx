@@ -81,28 +81,29 @@ const Register = () => {
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // 👈 ADD THIS as the VERY FIRST LINE
 
-    if (passwordError) {
-      toast.error("Please fix password errors");
-      return;
-    }
-
-    if (emailStatus === 'taken') {
-      toast.error("Email is already registered");
-      return;
-    }
-
-    if (!isEmailValid && emailStatus !== 'available') {
-      toast.error("Please enter a valid email");
-      return;
-    }
+    setError('');
+    setIsLoading(true);
 
     try {
-      await register(name, email, password);
+      const response = await axiosInstance.post('/auth/register', {
+        name,
+        email,
+        password
+      });
+
+      localStorage.setItem('token', response.data.token);
       navigate('/dashboard');
-    } catch (err) {
-      toast.error(err.response?.data?.error || "Registration Failed");
+
+    } catch (error) {
+      if (error.response?.status === 400) {
+        setError(error.response.data.error || 'Registration failed.');
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
