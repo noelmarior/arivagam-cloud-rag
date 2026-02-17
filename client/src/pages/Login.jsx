@@ -1,46 +1,37 @@
 import { useState, useEffect } from 'react';
 import useAuth from '../hooks/useAuth';
 import { useNavigate, Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
+import axiosInstance from '../api/axios'; // ✅ ADD THIS - was missing!
 import landingPageImg from '../assets/landingpage.png';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState('');
+  const [loginError, setLoginError] = useState(''); // ✅ Keep your naming
+  const [isLoading, setIsLoading] = useState(false); // ✅ ADD THIS - was missing!
 
   const { login, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
-      navigate('/dashboard');
-    }
+    if (user) navigate('/dashboard');
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // 👈 ADD THIS as the VERY FIRST LINE
-
-    setError(''); // Clear previous errors
+    e.preventDefault();
+    setLoginError(''); // ✅ Use loginError, not error
     setIsLoading(true);
 
     try {
-      const response = await axiosInstance.post('/auth/login', { email, password });
-
-      // Store token
-      localStorage.setItem('token', response.data.token);
-
-      // Redirect to dashboard
+      await login(email, password); // ✅ Use useAuth's login function
       navigate('/dashboard');
-
     } catch (error) {
-      // ✅ Now this message will STAY visible (no refresh!)
       if (error.response?.status === 401) {
-        setError('Invalid email or password. Please try again.');
+        setLoginError('Invalid email or password. Please try again.');
       } else {
-        setError('Something went wrong. Please try again.');
+        setLoginError('Something went wrong. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -49,11 +40,8 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-
-      {/* LEFT COLUMN - INTERACTION */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 lg:p-12 bg-white">
         <div className="w-full max-w-md space-y-8">
-
           <div className="text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start gap-3 mb-6">
               <img src="/logo_mel.png" alt="Arivagam Logo" className="w-12 h-12 object-contain" />
@@ -97,9 +85,9 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Error Message & Create Account Prompt */}
+            {/* ✅ Error Message - Uses loginError */}
             {loginError && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-md animate-fade-in">
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-md">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -118,9 +106,10 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-all shadow-lg shadow-gray-200"
+              disabled={isLoading} // ✅ Disable while loading
+              className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-all shadow-lg shadow-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign In
+              {isLoading ? 'Signing In...' : 'Sign In'} {/* ✅ Loading state */}
             </button>
           </form>
 
@@ -128,35 +117,25 @@ const Login = () => {
             Don't have an account? <Link to="/register" className="text-black font-bold hover:underline ml-1">Create account</Link>
           </p>
         </div>
-
         <div className="mt-12 text-xs text-center text-gray-400">
           &copy; {new Date().getFullYear()} Arivagam. All rights reserved.
         </div>
       </div>
 
-      {/* RIGHT COLUMN - STORYTELLING */}
       <div className="hidden lg:flex w-1/2 bg-gray-900 relative overflow-hidden items-center justify-center p-12">
-        <img
-          src={landingPageImg}
-          alt="App Screenshot"
-          className="absolute inset-0 w-full h-full object-cover opacity-40"
-        />
+        <img src={landingPageImg} alt="App Screenshot" className="absolute inset-0 w-full h-full object-cover opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 to-slate-900/80 z-10" />
         <div className="relative z-20 flex flex-col justify-center h-full text-white text-left w-full pl-8">
           <h2 className="text-5xl font-bold leading-tight mb-6 tracking-tight">
-            Your notes. <br />
-            Organized. <br />
-            Understood. <br />
-            Remembered.
+            Your notes. <br />Organized. <br />Understood. <br />Remembered.
           </h2>
           <p className="text-xl text-blue-100 font-medium max-w-lg border-l-4 border-blue-400 pl-4">
             Upload once. Search smart. Study faster.
           </p>
         </div>
       </div>
-
     </div>
   );
 };
 
-export default Login; 
+export default Login;
