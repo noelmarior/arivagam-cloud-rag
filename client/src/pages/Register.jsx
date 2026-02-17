@@ -4,7 +4,7 @@ import useAuth from '../hooks/useAuth';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, Loader, Check, X } from 'lucide-react';
-import axios from 'axios';
+import axiosInstance from '../api/axios';
 import landingPageImg from '../assets/landingpage.png';
 
 const Register = () => {
@@ -27,7 +27,9 @@ const Register = () => {
 
     setEmailStatus('checking');
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/check-email', { email: emailValue });
+      // ✅ Use axiosInstance with relative path (no localhost!)
+      const response = await axiosInstance.post('/auth/check-email', { email: emailValue });
+
       if (response.data.exists) {
         setEmailStatus('taken');
         setIsEmailValid(false);
@@ -36,8 +38,9 @@ const Register = () => {
         setIsEmailValid(true);
       }
     } catch (error) {
-      console.error("Email check failed", error);
+      console.error("Email check failed:", error);
       setEmailStatus('error');
+      setIsEmailValid(false); // Safety: assume invalid on error
     }
   };
 
