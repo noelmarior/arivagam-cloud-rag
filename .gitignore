@@ -9,6 +9,9 @@ server/node_modules/
 .env.production
 .env.development
 
+# ✅ BUT keep example files (add this line)
+!**/.env.example
+
 # Build outputs
 dist/
 build/
