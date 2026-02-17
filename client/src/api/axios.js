@@ -59,15 +59,24 @@ instance.interceptors.request.use(
 // ✅ RESPONSE INTERCEPTOR: Handle common errors
 instance.interceptors.response.use(
   (response) => {
-    // Log successful responses in development
     if (import.meta.env.DEV) {
       console.log(`✅ ${response.config.method.toUpperCase()} ${response.config.url}`, response.status);
     }
     return response;
   },
   (error) => {
-    // Handle 401 Unauthorized (token expired/invalid)
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url || '';
+
+    // ✅ Skip redirect for auth endpoints
+    // A 401 on /auth/login means wrong password - NOT expired session
+    const isAuthEndpoint = requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/check-email');
+
+    // Only redirect to login if:
+    // 1. It's a 401 error
+    // 2. It's NOT an auth endpoint (real expired session)
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       console.warn('🔒 Session expired. Redirecting to login...');
       sessionStorage.removeItem('token');
       localStorage.removeItem('token');
@@ -80,11 +89,9 @@ instance.interceptors.response.use(
       console.error('Check if backend is running:', baseURL);
     }
 
-    // Log error details in development
     if (import.meta.env.DEV) {
       console.error('❌ Response Error:', {
         url: error.config?.url,
-        method: error.config?.method,
         status: error.response?.status,
         message: error.response?.data?.error || error.message
       });
