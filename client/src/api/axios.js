@@ -27,7 +27,6 @@ if (import.meta.env.PROD && (!baseURL || baseURL.includes('localhost'))) {
 // Create axios instance
 const instance = axios.create({
   baseURL: baseURL || 'http://localhost:5000/api',
-  withCredentials: true,
   timeout: 15000, // 15 second timeout (uploads may take time)
   headers: {
     'Content-Type': 'application/json',
