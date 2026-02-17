@@ -21,20 +21,29 @@ const Login = () => {
   }, [user, navigate]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("🔵 Attempting Login with:", email);
-    setLoginError('');
+    e.preventDefault(); // 👈 ADD THIS as the VERY FIRST LINE
+
+    setError(''); // Clear previous errors
+    setIsLoading(true);
 
     try {
-      await login(email, password);
-      console.log("✅ Login Success!");
+      const response = await axiosInstance.post('/auth/login', { email, password });
+
+      // Store token
+      localStorage.setItem('token', response.data.token);
+
+      // Redirect to dashboard
       navigate('/dashboard');
-    } catch (err) {
-      console.error("❌ Login Error:", err);
-      // Generic error message for security, but prompt for account creation in UI
-      const errorMsg = "Invalid email or password";
-      setLoginError(errorMsg);
-      toast.error(errorMsg);
+
+    } catch (error) {
+      // ✅ Now this message will STAY visible (no refresh!)
+      if (error.response?.status === 401) {
+        setError('Invalid email or password. Please try again.');
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
