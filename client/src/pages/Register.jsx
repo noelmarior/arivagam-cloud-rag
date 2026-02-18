@@ -134,6 +134,7 @@ const Register = () => {
               <input
                 type="email"
                 value={email}
+                autoComplete='off'
                 onChange={e => setEmail(e.target.value)}
                 className={`w-full py-3 px-0 bg-transparent border-b ${emailStatus === 'taken' ? 'border-red-500' : emailStatus === 'available' ? 'border-green-500' : 'border-gray-300'} focus:border-black outline-none transition-all placeholder:text-gray-400`}
                 placeholder="you@example.com"
@@ -153,6 +154,7 @@ const Register = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
+                autoComplete='new-password'
                 onChange={handlePasswordChange}
                 className={`w-full py-3 px-0 bg-transparent border-b ${passwordError ? 'border-red-500' : 'border-gray-300'} focus:border-black outline-none transition-all placeholder:text-gray-400 pr-10`}
                 placeholder="Create a strong password"
