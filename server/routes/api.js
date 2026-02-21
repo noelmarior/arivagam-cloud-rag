@@ -91,6 +91,7 @@ router.delete('/files/:id', requireAuth, fileController.deleteFile);
 router.post('/sessions/init', requireAuth, chatController.initializeSession);
 // Messaging
 router.post('/chat/message', requireAuth, chatController.sendMessage);
+router.put('/chat/message', requireAuth, chatController.updateLastMessage); // Update last message
 // Session Management
 router.get('/sessions', requireAuth, sessionController.getSessions);      // Sidebar List
 router.get('/sessions/:id', requireAuth, sessionController.getSession);   // Single Session

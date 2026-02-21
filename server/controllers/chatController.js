@@ -132,10 +132,38 @@ exports.sendMessage = async (req, res) => {
     session.lastActive = Date.now();
     await session.save();
 
-    res.json(aiMessage);
+    res.json(session.messages[session.messages.length - 1]);
 
   } catch (error) {
     console.error("Chat Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 3. UPDATE LAST MESSAGE (When Generation is Stopped)
+exports.updateLastMessage = async (req, res) => {
+  try {
+    const { sessionId, content } = req.body;
+    const userId = req.auth.userId;
+
+    const session = await Session.findOne({ _id: sessionId, userId });
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    if (session.messages.length > 0) {
+      const lastMessageIndex = session.messages.length - 1;
+      const lastMessage = session.messages[lastMessageIndex];
+
+      if (lastMessage.role === 'assistant') {
+        session.messages[lastMessageIndex].content = content;
+        await session.save();
+        return res.json(session.messages[lastMessageIndex]);
+      }
+    }
+
+    res.status(400).json({ error: "Last message is not an assistant message." });
+
+  } catch (error) {
+    console.error("Update Last Message Error:", error);
     res.status(500).json({ error: error.message });
   }
 };

@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Chat from './pages/Chat';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Reset from './pages/Reset';
+import SetNewPassword from './pages/SetNewPassword';
 import Layout from './components/Layout';
 import FileView from './pages/FileView';
 import axiosInstance from './api/axios'; // ✅ ADD THIS
@@ -77,6 +79,8 @@ function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<Reset />} />
+          <Route path="/reset-password/:token" element={<SetNewPassword />} />
 
           {/* Protected Routes (Locked) */}
           <Route element={<RequireAuth />}>

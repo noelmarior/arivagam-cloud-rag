@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 
-const TypewriterEffect = ({ content, onComplete }) => {
+const TypewriterEffect = ({ content, onComplete, isStopped }) => {
     const [displayedContent, setDisplayedContent] = useState('');
     const [isTyping, setIsTyping] = useState(true);
     const indexRef = useRef(0);
 
     useEffect(() => {
+        if (isStopped) {
+            setIsTyping(false);
+            if (onComplete) onComplete(displayedContent);
+            return;
+        }
+
         indexRef.current = 0;
         setDisplayedContent('');
         setIsTyping(true);
@@ -19,12 +25,12 @@ const TypewriterEffect = ({ content, onComplete }) => {
             } else {
                 clearInterval(interval);
                 setIsTyping(false);
-                if (onComplete) onComplete();
+                if (onComplete) onComplete(content);
             }
         }, 15); // Fast typing speed
 
         return () => clearInterval(interval);
-    }, [content]);
+    }, [content, isStopped]);
 
     return (
         <div className="prose prose-sm leading-relaxed whitespace-pre-wrap max-w-none">

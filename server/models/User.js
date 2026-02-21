@@ -5,11 +5,13 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
   createdAt: { type: Date, default: Date.now }
 });
 
 // ✅ FIX: Use 'async' ONLY (No 'next' parameter)
-UserSchema.pre('save', async function() {
+UserSchema.pre('save', async function () {
   // If password is not modified, just return (Promise resolves automatically)
   if (!this.isModified('password')) return;
 
@@ -18,7 +20,7 @@ UserSchema.pre('save', async function() {
   // No need to call next(), the function just finishes.
 });
 
-UserSchema.methods.matchPassword = async function(enteredPassword) {
+UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

@@ -599,6 +599,10 @@ export default function Dashboard() {
       contextMenu
     ) return;
 
+    if (e.currentTarget && e.currentTarget.setPointerCapture) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+
     if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
       setSelectedItems([]);
     }
@@ -680,7 +684,12 @@ export default function Dashboard() {
     setSelectedItems(combined);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    if (e && e.currentTarget && e.currentTarget.releasePointerCapture && e.pointerId !== undefined) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (err) { }
+    }
     setIsSelecting(false);
     setSelectionBox(null);
   };
@@ -689,10 +698,9 @@ export default function Dashboard() {
     <div
       ref={containerRef}
       className="p-6 md:p-10 h-full overflow-y-auto select-none relative"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onPointerDown={handleMouseDown}
+      onPointerMove={handleMouseMove}
+      onPointerUp={handleMouseUp}
 
       onClick={(e) => {
         if (!editingId && !isSelecting) {
@@ -724,7 +732,7 @@ export default function Dashboard() {
               </div>
             )}
             <span className="truncate max-w-[200px] md:max-w-md">
-              {isSearching ? `Search: "${searchQuery}"` : (data.currentFolder ? data.currentFolder.name : "My Drive")}
+              {isSearching ? `Search: "${searchQuery}"` : (data.currentFolder ? data.currentFolder.name : "DRIVE")}
             </span>
           </div>
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import api from '../api/axios';
 import {
-  MessageSquare, Plus, Send, MoreVertical, FileText, Check, Loader2, Folder, SendHorizontal, PenLine
+  MessageSquare, Plus, Send, MoreVertical, FileText, Check, Loader2, Folder, SendHorizontal, PenLine, Square
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import SourceSelector from '../components/SourceSelector';
@@ -30,8 +30,10 @@ const Chat = () => {
   const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState(null);
 
-  // ✅ 2. NEW STATE FOR STYLE
+  // ✅ 2. NEW STATE FOR STYLE & ABORT
   const [activeStyle, setActiveStyle] = useState(null);
+  const [abortController, setAbortController] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Exam Controls
   const messagesEndRef = useRef(null);
@@ -52,6 +54,9 @@ const Chat = () => {
     // Cleanup on unmount (Optional, but good practice to clear if leaving chat)
     return () => {
       if (setActiveSessionId) setActiveSessionId(null);
+      if (abortController) {
+        abortController.abort();
+      }
     };
   }, [sessionId, location.state]);
 
@@ -105,17 +110,45 @@ const Chat = () => {
       setLoadingSession(false);
     }
   };
+
+  const [isTypewriterStopped, setIsTypewriterStopped] = useState(false);
+  const [isTyping, setIsTyping] = useState(false); // To track if typewriter is running
+
+  const handleStop = () => {
+    setIsTypewriterStopped(true);
+    if (abortController) {
+      abortController.abort();
+      setAbortController(null);
+      setIsGenerating(false);
+      // Remove temporary message if aborted during network fetch
+      setMessages(prev => {
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg && lastMsg.isTemp) {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+      toast("Generation stopped", { icon: "🛑" });
+    }
+  };
+
   // ✅ 3. UPDATED HANDLE SEND
   const handleSend = async (e) => {
-    if (e) e.preventDefault(); // Handle form submission
-    if (!input.trim() || !currentSession) return;
-
-    const userMsg = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMsg]);
-    setInput("");
+    if (e) e.preventDefault();
+    if (!input.trim() || !currentSession || isGenerating || isTyping) return;
 
     const tempId = Date.now();
+    const userMsg = { role: 'user', content: input, _id: tempId + '-user' };
+    setMessages(prev => [...prev, userMsg]);
+    setInput("");
+    setIsTypewriterStopped(false);
+    setIsTyping(false);
+
     setMessages(prev => [...prev, { role: 'assistant', content: "...", isTemp: true, _id: tempId }]);
+
+    const controller = new AbortController();
+    setAbortController(controller);
+    setIsGenerating(true);
 
     try {
       const res = await api.post('/chat/message', {
@@ -123,7 +156,11 @@ const Chat = () => {
         message: userMsg.content,
         // Pass the custom style instruction if active, otherwise backend uses default
         styleInstruction: activeStyle ? activeStyle.instruction : null
+      }, {
+        signal: controller.signal
       });
+
+      setIsTyping(true); // Response received, typewriter is starting
 
       setMessages(prev =>
         prev.map(msg => msg._id === tempId ? { ...res.data, role: 'assistant', shouldAnimate: true } : msg)
@@ -133,9 +170,16 @@ const Chat = () => {
       if (refreshSessions) refreshSessions();
 
     } catch (err) {
-      console.error("Message Send Error:", err);
-      setMessages(prev => prev.filter(msg => msg._id !== tempId));
-      toast.error("Failed to get response");
+      if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+        console.log('Request canceled by user');
+      } else {
+        console.error("Message Send Error:", err);
+        setMessages(prev => prev.filter(msg => msg._id !== tempId));
+        toast.error("Failed to get response");
+      }
+    } finally {
+      setIsGenerating(false);
+      setAbortController(null);
     }
   };
 
@@ -302,7 +346,34 @@ const Chat = () => {
                   // If it's the assistant and marked for animation (newly arrived), type it out.
                   // Otherwise, show static content.
                   msg.role === 'assistant' && msg.shouldAnimate ? (
-                    <TypewriterEffect content={msg.content} />
+                    <TypewriterEffect
+                      content={msg.content}
+                      isStopped={isTypewriterStopped}
+                      onComplete={async (displayedText) => {
+                        setIsTyping(false);
+                        // If it was stopped early, save the truncated version back to DB
+                        if (isTypewriterStopped && displayedText !== msg.content) {
+                          try {
+                            // Update local state so it doesn't snap back to full text
+                            setMessages(prev => prev.map(m =>
+                              m._id === msg._id ? { ...m, content: displayedText, shouldAnimate: false } : m
+                            ));
+
+                            await api.put(`/chat/message/`, {
+                              sessionId: currentSession._id,
+                              content: displayedText
+                            });
+                          } catch (err) {
+                            console.error("Failed to save truncated message explicitly:", err);
+                          }
+                        } else {
+                          // Normal finish, just disable animation flag to prevent re-running
+                          setMessages(prev => prev.map(m =>
+                            m._id === msg._id ? { ...m, shouldAnimate: false } : m
+                          ));
+                        }
+                      }}
+                    />
                   ) : (
                     renderContent(msg.content)
                   )
@@ -366,14 +437,24 @@ const Chat = () => {
                 onStyleSelect={setActiveStyle}
               />
 
-              {/* 3. SEND BUTTON */}
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition shadow-md"
-              >
-                <SendHorizontal className="w-5 h-5" />
-              </button>
+              {/* 3. SEND / STOP BUTTON */}
+              {isGenerating || isTyping ? (
+                <button
+                  type="button"
+                  onClick={handleStop}
+                  className="p-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition shadow-md flex items-center justify-center"
+                >
+                  <Square className="w-5 h-5 fill-current" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!input.trim()}
+                  className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition shadow-md"
+                >
+                  <SendHorizontal className="w-5 h-5" />
+                </button>
+              )}
 
             </div>
 
