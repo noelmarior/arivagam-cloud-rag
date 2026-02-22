@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { BookOpen, Plus, MessageSquare, MoreHorizontal, Trash2, Edit2, Pin, Menu, LogOut, ChevronUp, PenLine } from 'lucide-react';
+import { BookOpen, Plus, MessageSquare, MoreHorizontal, Trash2, Edit2, Pin, Menu, LogOut, ChevronUp, PenLine, Sun, Moon } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
 import SourceSelector from './SourceSelector';
@@ -8,13 +8,14 @@ import DeleteModal from './DeleteModal';
 import toast, { Toaster } from 'react-hot-toast';
 import logo from '../assets/logo.png';
 import useAuth from '../hooks/useAuth';
+import { useTheme } from '../context/ThemeContext';
 
 
 const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuth();
-
+  const { theme, toggleTheme } = useTheme();
 
   const [sessions, setSessions] = useState([]);
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
@@ -181,8 +182,10 @@ const Layout = () => {
   };
 
   return (
-    <div className={`flex h-screen bg-gray-100 overflow-hidden font-sans relative transition-colors duration-200`}>
-      <Toaster position="bottom-center" />
+    <div className={`flex h-screen bg-gray-100 dark:bg-[#15171e] overflow-hidden font-sans relative transition-colors duration-200`}>
+      <Toaster position="bottom-center" toastOptions={{
+        className: 'dark:bg-gray-800 dark:text-white',
+      }} />
 
       <SourceSelector
         isOpen={isSourceModalOpen}
@@ -205,27 +208,30 @@ const Layout = () => {
       <aside className={`
         fixed left-3 top-3 bottom-0 w-64 z-20 flex flex-col transition-all duration-300
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[110%]'}
-        bg-white rounded-2xl border border-gray-100 shadow-sm
+        bg-white dark:bg-[#1c1e21] rounded-2xl border border-gray-100 dark:border-gray-800/60 shadow-sm
       `}>
 
         {/* LOGO */}
-        <div className="p-5 flex items-center gap-3 border-b border-gray-50">
+        <div className="p-5 flex items-center gap-3 border-b border-gray-50 dark:border-gray-800/60">
           <img src="/logo_mel.png" alt="Logo" className="w-12 h-12 rounded-[7px] object-cover shadow-sm" />
-          <span className="font-bold text-gray-900 tracking-tight text-2xl relative -top-[3px] -left-[1px]">ARIVAGAM</span>
+          <span className="font-bold text-gray-900 dark:text-white tracking-tight text-2xl relative -top-[3px] -left-[1px]">ARIVAGAM</span>
         </div>
 
         {/* NAVIGATION */}
         <div className="p-3 space-y-3 mt-2">
           <button
             onClick={() => setIsSourceModalOpen(true)}
-            className="flex items-center gap-3 w-full px-4 py-3 bg-white border border-gray-100 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium"
+            className="flex items-center gap-3 w-full px-4 py-3 bg-white dark:bg-blue-600/10 border border-gray-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-600 hover:text-white dark:hover:text-white hover:border-blue-600 dark:hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium"
           >
             <Plus className="w-5 h-5" /> New Session
           </button>
 
           <button
             onClick={() => navigate('/dashboard')}
-            className={`flex items-center gap-3 w-full px-4 py-3 bg-white border border-gray-100 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium`}
+            className={`flex items-center gap-3 w-full px-4 py-3 border rounded-xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white hover:border-blue-600 dark:hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium
+              ${location.pathname === '/dashboard' || location.pathname.startsWith('/folder')
+                ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/20 dark:border-blue-500/30 dark:text-blue-400'
+                : 'bg-white border-gray-100 text-blue-600 dark:bg-[#1c1e21] dark:border-gray-800/60 dark:text-gray-300'}`}
           >
             <BookOpen className="w-5 h-5" /> My Drive
           </button>
@@ -233,7 +239,7 @@ const Layout = () => {
 
         {/* RECENT SESSIONS LIST */}
         <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-1">Recent Sessions</p>
+          <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 px-1">Recent Sessions</p>
           <div className="space-y-0 pb-10">
             {sessions.map(sess => (
               <div
@@ -242,8 +248,8 @@ const Layout = () => {
                 className={`group relative flex items-center justify-between px-3 py-1 rounded-lg cursor-pointer select-none transition-all duration-200 border
                   ${activeMenuId === sess._id ? 'z-30' : ''}
                   ${location.pathname.includes(sess._id)
-                    ? 'bg-blue-50 border-blue-200 shadow-sm'
-                    : 'bg-white border-transparent hover:-translate-y-1 hover:shadow-md hover:border-gray-100'
+                    ? 'bg-blue-50 border-blue-200 shadow-sm dark:bg-blue-500/10 dark:border-blue-500/20'
+                    : 'bg-white border-transparent hover:-translate-y-1 hover:shadow-md hover:border-gray-100 dark:bg-transparent dark:hover:bg-gray-800/50 dark:hover:border-gray-700'
                   }`}
               >
                 {/* RENAME INPUT MODE */}
@@ -251,7 +257,7 @@ const Layout = () => {
                   <form onSubmit={submitRename} onClick={e => e.stopPropagation()} className="flex-1 flex gap-1">
                     <input
                       autoFocus
-                      className="w-full bg-white text-gray-900 text-sm rounded px-1 outline-none border border-blue-500 shadow-sm"
+                      className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm rounded px-1 outline-none border border-blue-500 shadow-sm"
                       value={renameValue}
                       onChange={e => setRenameValue(e.target.value)}
                       onBlur={submitRename}
@@ -261,15 +267,15 @@ const Layout = () => {
                   <>
                     {/* SESSION NAME */}
                     <div className="flex items-center gap-3 overflow-hidden flex-1">
-                      <MessageSquare className={`w-4 h-4 flex-shrink-0 ${location.pathname.includes(sess._id) ? 'text-blue-600' : 'text-gray-400 group-hover:text-blue-500'}`} />
+                      <MessageSquare className={`w-4 h-4 flex-shrink-0 ${location.pathname.includes(sess._id) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 group-hover:text-blue-500 dark:text-gray-500 dark:group-hover:text-blue-400'}`} />
 
-                      <span className={`text-sm truncate transition-colors font-medium ${sess.isPinned ? 'text-blue-600' :
-                        location.pathname.includes(sess._id) ? 'text-blue-900' : 'text-gray-600 group-hover:text-gray-900'
+                      <span className={`text-sm truncate transition-colors font-medium ${sess.isPinned ? 'text-blue-600 dark:text-blue-400' :
+                        location.pathname.includes(sess._id) ? 'text-blue-900 dark:text-blue-300' : 'text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white'
                         }`}>
                         {sess.name}
                       </span>
                       {/* PIN INDICATOR */}
-                      {sess.isPinned && <Pin className="w-3 h-3 text-blue-500 fill-blue-500 flex-shrink-0 ml-auto" />}
+                      {sess.isPinned && <Pin className="w-3 h-3 text-blue-500 dark:text-blue-400 fill-blue-500 dark:fill-blue-400 flex-shrink-0 ml-auto" />}
                     </div>
 
                     {/* THREE DOTS MENU (Visible on Hover or Active) */}
@@ -279,22 +285,22 @@ const Layout = () => {
                           e.stopPropagation();
                           setActiveMenuId(activeMenuId === sess._id ? null : sess._id);
                         }}
-                        className={`p-1 rounded-md transition-opacity ${activeMenuId === sess._id || location.pathname.includes(sess._id) ? 'opacity-100 text-gray-600' : 'opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600'}`}
+                        className={`p-1 rounded-md transition-opacity ${activeMenuId === sess._id || location.pathname.includes(sess._id) ? 'opacity-100 text-gray-600 dark:text-gray-300' : 'opacity-0 group-hover:opacity-100 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400'}`}
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
 
                       {/* DROPDOWN MENU */}
                       {activeMenuId === sess._id && (
-                        <div ref={menuRef} className="absolute right-0 top-8 w-32 bg-white border border-gray-100 shadow-xl rounded-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                          <button onClick={(e) => initRename(e, sess)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition">
+                        <div ref={menuRef} className="absolute right-0 top-8 w-32 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-xl rounded-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                          <button onClick={(e) => initRename(e, sess)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition">
                             <Edit2 className="w-3 h-3" /> Rename
                           </button>
-                          <button onClick={(e) => handlePin(e, sess)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition">
+                          <button onClick={(e) => handlePin(e, sess)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 transition">
                             <Pin className="w-3 h-3" /> {sess.isPinned ? 'Unpin' : 'Pin'}
                           </button>
-                          <div className="h-px bg-gray-100 my-1"></div>
-                          <button onClick={(e) => handleDelete(e, sess._id)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition">
+                          <div className="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
+                          <button onClick={(e) => handleDelete(e, sess._id)} className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition">
                             <Trash2 className="w-3 h-3" /> Delete
                           </button>
                         </div>
@@ -308,22 +314,51 @@ const Layout = () => {
         </div>
 
         {/* USER PROFILE MENU (Bottom Bar) */}
-        <div className="p-3 border-t border-gray-50 relative" ref={userMenuRef}>
+        <div className="p-3 border-t border-gray-50 dark:border-gray-800/60 relative" ref={userMenuRef}>
 
           {/* POPUP MENU */}
           {showUserMenu && (
-            <div className="absolute bottom-full left-3 right-3 mb-2 bg-white border border-gray-100 rounded-xl shadow-xl p-1 overflow-hidden animate-in fade-in slide-in-from-bottom-2 z-50">
+            <div className="absolute bottom-full left-3 right-3 mb-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl p-1 animate-in fade-in slide-in-from-bottom-2 z-50">
 
               {/* User Email Info */}
-              <div className="px-3 py-2 border-b border-gray-50 mb-1">
-                <p className="text-gray-900 text-sm font-bold truncate">{user?.name || 'User'}</p>
-                <p className="text-gray-500 text-xs truncate">{user?.email || 'user@example.com'}</p>
+              <div className="px-3 py-2 border-b border-gray-50 dark:border-gray-700/50 mb-1">
+                <p className="text-gray-900 dark:text-gray-100 text-sm font-bold truncate">{user?.name || 'User'}</p>
+                <p className="text-gray-500 dark:text-gray-400 text-xs truncate">{user?.email || 'user@example.com'}</p>
+              </div>
+
+              {/* Theme Toggle Section */}
+              <div className="relative group px-1 mb-1 border-b border-gray-50 dark:border-gray-700/50 pb-1">
+                <button
+                  className="flex items-center justify-between w-full px-2 py-1.5 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider"><Sun className="w-4 h-4" /> Theme</div>
+                  <ChevronUp className="w-4 h-4 rotate-90" />
+                </button>
+
+                {/* Side Menu Wrapper with transparent padding to bridge the hover gap */}
+                <div className="absolute left-full top-[-4px] pl-1.5 w-36 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-[60] translate-x-1 group-hover:translate-x-0">
+                  <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl shadow-xl p-1">
+                    <button
+                      onClick={() => toggleTheme('light')}
+                      className={`flex items-center justify-between w-full px-2 py-1.5 text-sm rounded-lg transition ${theme === 'light' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 font-medium' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                    >
+                      <div className="flex items-center gap-2"><Sun className="w-4 h-4" /> Light</div>
+                      {theme === 'light' && <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400"></div>}
+                    </button>
+                    <button
+                      onClick={() => toggleTheme('dark')}
+                      className={`flex items-center justify-between w-full px-2 py-1.5 text-sm rounded-lg transition mt-1 ${theme === 'dark' ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 font-medium' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                    >
+                      <div className="flex items-center gap-2"><Moon className="w-4 h-4" /> Dark</div>
+                      {theme === 'dark' && <div className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400"></div>}
+                    </button>
+                  </div>
+                </div>
               </div>
 
 
-
               {/* Logout */}
-              <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg transition mt-1">
+              <button onClick={logout} className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition mt-1">
                 <LogOut className="w-4 h-4" /> Log out
               </button>
             </div>
@@ -333,15 +368,15 @@ const Layout = () => {
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
             className={`flex items-center gap-3 w-full p-2 rounded-xl transition-all duration-300 border border-transparent
-              ${showUserMenu ? 'bg-gray-50 border-gray-200' : 'bg-white hover:-translate-y-1 hover:shadow-md hover:border-gray-100'}
+              ${showUserMenu ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-white dark:bg-transparent hover:-translate-y-1 hover:shadow-md hover:border-gray-100 dark:hover:bg-gray-800/50 dark:hover:border-gray-700/50'}
             `}
           >
-            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white">
+            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white dark:ring-gray-800">
               {user?.name?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 text-left overflow-hidden">
-              <p className="text-sm font-bold text-blue-900 truncate">{user?.name || 'User'}</p>
-              <p className="text-xs text-gray-500 truncate">Student</p>
+              <p className="text-sm font-bold text-blue-900 dark:text-gray-200 truncate">{user?.name || 'User'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Student</p>
             </div>
             <ChevronUp className={`w-4 h-4 text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
           </button>

@@ -255,7 +255,7 @@ const Chat = () => {
   }
 
   return (
-    <div className="flex h-screen bg-white font-sans overflow-hidden">
+    <div className="flex h-screen bg-white dark:bg-[#15171e] font-sans overflow-hidden">
 
       <SourceSelector
         isOpen={isAddSourceOpen}
@@ -265,8 +265,8 @@ const Chat = () => {
       />
 
       {/* --- LEFT PANEL: SOURCES --- */}
-      <div className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col flex-shrink-0">
-        <div className="p-4 border-b border-gray-200">
+      <div className="w-80 bg-gray-50 dark:bg-[#1c1e21] border-r border-gray-200 dark:border-gray-800/60 flex flex-col flex-shrink-0">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-800/60">
           <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
             <FileText className="w-4 h-4" /> Sources
           </h2>
@@ -281,12 +281,12 @@ const Chat = () => {
             currentSession?.sourceFiles?.map((file, idx) => {
               const theme = getFileTheme(file.fileName);
               return (
-                <div key={idx} className="flex flex-col p-3 bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div key={idx} className="flex flex-col p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm">
                   <div className="flex items-center gap-2 mb-1">
                     <div className={`p-1.5 ${theme.light} rounded-md ${theme.text}`}>
                       <theme.Icon className="w-4 h-4" />
                     </div>
-                    <span className="text-sm font-semibold text-gray-700 truncate">
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate">
                       {file.fileName}
                     </span>
                   </div>
@@ -303,7 +303,7 @@ const Chat = () => {
 
           <button
             onClick={() => setIsAddSourceOpen(true)}
-            className="flex items-center justify-center gap-2 w-full p-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition mt-2 border border-dashed border-blue-200 hover:border-blue-400"
+            className="flex items-center justify-center gap-2 w-full p-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition mt-2 border border-dashed border-blue-200 dark:border-blue-500/30 hover:border-blue-400 dark:hover:border-blue-500/50"
           >
             <Plus className="w-4 h-4" /> Add Source
           </button>
@@ -311,16 +311,15 @@ const Chat = () => {
       </div>
 
       {/* --- RIGHT PANEL: CHAT --- */}
-      <div className="flex-1 flex flex-col relative bg-white">
-        <div className="h-16 border-b border-gray-100 flex items-center px-6 bg-white sticky top-0 z-10 shadow-sm">
-          <h1 className="font-bold text-gray-800 text-lg">
+      <div className="flex-1 flex flex-col relative bg-white dark:bg-[#15171e]">
+        <div className="h-16 border-b border-gray-100 dark:border-gray-800/60 flex items-center px-6 bg-white dark:bg-[#1c1e21] sticky top-0 z-10 shadow-sm">
+          <h1 className="font-bold text-gray-800 dark:text-gray-100 text-lg">
             {currentSession ? currentSession.name : "Study Session"}
           </h1>
         </div>
 
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 bg-gray-50/50">
-
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 bg-gray-50/50 dark:bg-transparent">
 
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -328,7 +327,7 @@ const Chat = () => {
                 <img
                   src={logo}
                   alt="AI"
-                  className="w-8 h-8 rounded-full object-contain mr-3 mt-1 bg-white border border-gray-100 p-0.5"
+                  className="w-8 h-8 rounded-full object-contain mr-3 mt-1 bg-white border border-gray-100 p-0.5 dark:bg-transparent dark:border-transparent dark:p-0"
                 />
               )}
 
@@ -336,8 +335,8 @@ const Chat = () => {
               <div
                 onContextMenu={(e) => msg.role === 'assistant' && handleContextMenu(e, msg)}
                 className={`max-w-3xl p-5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
-                  ? 'bg-gray-900 text-white rounded-br-none prose prose-invert prose-sm'
-                  : 'bg-gray-50 border border-gray-200 text-gray-800 rounded-bl-none prose prose-sm'
+                  ? 'bg-gray-900 dark:bg-blue-600 text-white rounded-br-none prose prose-invert prose-sm'
+                  : 'bg-gray-50 dark:bg-[#1c1e21] border border-gray-200 dark:border-gray-800/60 text-gray-800 dark:text-gray-200 rounded-bl-none prose prose-sm dark:prose-invert'
                   }`}
               >
                 {msg.isTemp ? (
@@ -420,7 +419,7 @@ const Chat = () => {
 
         {/* ✅ 4. NEW INPUT UI WITH STYLE MANAGER */}
         <form onSubmit={handleSend}>
-          <div className="p-4 bg-white border-t border-gray-100">
+          <div className="p-4 bg-white dark:bg-[#1c1e21] border-t border-gray-100 dark:border-gray-800/60">
             <div className="max-w-4xl mx-auto relative flex items-center gap-2">
 
               {/* 1. INPUT BOX */}
@@ -428,7 +427,7 @@ const Chat = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={activeStyle ? `Ask a question (${activeStyle.name} Mode)...` : "Ask a question..."}
-                className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition shadow-inner"
+                className="flex-1 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition shadow-inner dark:text-white dark:placeholder-gray-500"
               />
 
               {/* 2. THREE DOTS MENU (Style Manager) */}

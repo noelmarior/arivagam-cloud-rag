@@ -79,8 +79,8 @@ const FileView = () => {
     // FIX: Use 'min-h-full' instead of 'h-full' to allow scrolling in parent container
     if (fileType === 'text/plain') {
       return (
-        <div className="w-full min-h-full p-8 bg-white">
-          <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">
+        <div className="w-full min-h-full p-8 bg-white dark:bg-[#1c1e21]">
+          <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
             {file.content || "No text content available."}
           </pre>
         </div>
@@ -154,7 +154,7 @@ const FileView = () => {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-8 bg-gray-50">
+    <div className="h-full overflow-y-auto p-8 bg-gray-50 dark:bg-[#15171e]">
       <div className="max-w-5xl mx-auto h-full flex flex-col">
 
         {/* Back Button */}
@@ -167,7 +167,7 @@ const FileView = () => {
         </Link>
 
         {/* Header + Summary */}
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 mb-6">
+        <div className="bg-white dark:bg-[#1c1e21] p-8 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800/60 mb-6">
           <div className="flex items-center justify-between mb-6">
             {/* LEFT SIDE: Icon & Title */}
             <div className="flex items-center gap-4">
@@ -175,7 +175,7 @@ const FileView = () => {
                 <theme.Icon className={`w-8 h-8 ${theme.iconColor}`} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                   {file.fileName}
                 </h1>
                 <div className="flex items-center text-gray-500 text-sm mt-2 font-medium">
@@ -195,22 +195,22 @@ const FileView = () => {
           </div>
 
           {/* AI Summary */}
-          <div className={`bg-gradient-to-r ${theme.gradient} p-6 rounded-xl border-l-4 ${theme.border} ${theme.lightBorder}`}>
-            <h3 className={`text-xs font-bold ${theme.titleColor} mb-3 uppercase tracking-wider`}>
+          <div className={`bg-gradient-to-r ${theme.gradient} dark:from-transparent dark:to-transparent dark:bg-gray-800 p-6 rounded-xl border-l-4 ${theme.border} dark:border-gray-600 ${theme.lightBorder}`}>
+            <h3 className={`text-xs font-bold ${theme.titleColor} dark:text-gray-300 mb-3 uppercase tracking-wider`}>
               AI Summary
             </h3>
-            <div className={`${theme.proseColor} text-sm leading-relaxed prose prose-sm max-w-none prose-headings:font-bold prose-p:my-1 prose-li:my-0`}>
+            <div className={`${theme.proseColor} dark:text-gray-200 text-sm leading-relaxed prose prose-sm max-w-none prose-headings:font-bold prose-headings:dark:text-white prose-p:my-1 prose-li:my-0`}>
               <ReactMarkdown>{file.summary}</ReactMarkdown>
             </div>
           </div>
         </div>
 
         {/* Viewer Container - FIXED SCROLLING */}
-        <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[800px]">
+        <div className="flex-1 bg-white dark:bg-[#1c1e21] rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800/60 overflow-hidden flex flex-col min-h-[800px]">
 
           {/* Header */}
-          <div className="h-12 border-b border-gray-100 flex justify-between items-center bg-gray-50 px-4 shrink-0">
-            <h2 className="font-bold text-gray-700 text-sm uppercase tracking-wide">Document Viewer</h2>
+          <div className="h-12 border-b border-gray-100 dark:border-gray-800/60 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 px-4 shrink-0">
+            <h2 className="font-bold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wide">Document Viewer</h2>
             {displayUrl && (
               <a
                 href={displayUrl}

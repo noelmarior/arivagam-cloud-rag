@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */   
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext();
@@ -16,8 +16,12 @@ export const ThemeProvider = ({ children }) => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  const toggleTheme = (newTheme) => {
+    if (typeof newTheme === 'string') {
+      setTheme(newTheme);
+    } else {
+      setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    }
   };
 
   return (

@@ -718,17 +718,17 @@ export default function Dashboard() {
       {/* HEADER */}
       <div className="mb-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-          <div className="flex items-center gap-3 text-2xl font-bold text-gray-800">
+          <div className="flex items-center gap-3 text-2xl font-bold text-gray-800 dark:text-gray-100">
             {folderId ? (
               <button
                 onClick={goUp}
-                className="p-2 hover:bg-gray-200 rounded-full transition text-gray-600"
+                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition text-gray-600 dark:text-gray-400"
               >
                 <ArrowLeft className="w-6 h-6" />
               </button>
             ) : (
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <Folder className="w-6 h-6 text-blue-600" />
+              <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
+                <Folder className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
             )}
             <span className="truncate max-w-[200px] md:max-w-md">
@@ -750,7 +750,7 @@ export default function Dashboard() {
             type="text"
             autoComplete="off"
             placeholder="Search files and folders..."
-            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-800/60 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-[#1c1e21] dark:text-white dark:placeholder-gray-500 shadow-sm"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -764,7 +764,7 @@ export default function Dashboard() {
 
       {/* EMPTY STATE */}
       {!loading && allItems.length === 0 && !creating && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
           <Folder className="w-20 h-20 mb-4 opacity-20" />
           <p className="text-lg font-medium">
             {isSearching ? "No results found" : "This folder is empty"}
@@ -847,44 +847,44 @@ export default function Dashboard() {
       {/* CONTEXT MENU */}
       {contextMenu && (
         <div
-          className="fixed bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 min-w-[200px] animate-in fade-in zoom-in-95 duration-100"
+          className="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 z-50 min-w-[200px] animate-in fade-in zoom-in-95 duration-100"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
           {contextMenu.type === 'item' ? (
             <>
-              <button onClick={handleStartChat} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+              <button onClick={handleStartChat} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 text-left">
                 <MessageSquare className="w-4 h-4" /> Study with AI
               </button>
-              <div className="h-px bg-gray-100 my-1"></div>
-              <button onClick={handleCut} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+              <div className="h-px bg-gray-100 dark:bg-gray-700/50 my-1"></div>
+              <button onClick={handleCut} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 text-left">
                 <Scissors className="w-4 h-4" /> Cut
               </button>
-              <button onClick={handleCopy} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+              <button onClick={handleCopy} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 text-left">
                 <Copy className="w-4 h-4" /> Copy
               </button>
               {selectedItems.length === 1 && (
-                <button onClick={() => startRename(selectedItems[0])} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+                <button onClick={() => startRename(selectedItems[0])} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 text-left">
                   <Edit2 className="w-4 h-4" /> Rename
                 </button>
               )}
-              <div className="h-px bg-gray-100 my-1"></div>
-              <button onClick={handleDelete} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 text-left">
+              <div className="h-px bg-gray-100 dark:bg-gray-700/50 my-1"></div>
+              <button onClick={handleDelete} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 text-left">
                 <Trash2 className="w-4 h-4" /> Delete
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => { setCreating(true); setContextMenu(null); }} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+              <button onClick={() => { setCreating(true); setContextMenu(null); }} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 text-left">
                 <Plus className="w-4 h-4" /> New Folder
               </button>
-              <button onClick={() => setIsUploadOpen(true)} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+              <button onClick={() => { setIsUploadOpen(true); setContextMenu(null); }} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 text-left">
                 <UploadCloud className="w-4 h-4" /> Upload Files
               </button>
               {clipboard.items.length > 0 && (
                 <>
-                  <div className="h-px bg-gray-100 my-1"></div>
-                  <button onClick={handlePaste} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 text-left">
+                  <div className="h-px bg-gray-100 dark:bg-gray-700/50 my-1"></div>
+                  <button onClick={handlePaste} className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 text-left">
                     <Clipboard className="w-4 h-4" /> Paste
                   </button>
                 </>
@@ -917,13 +917,13 @@ export default function Dashboard() {
         className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-3"
       >
         {isMenuOpen && (
-          <div className="bg-white rounded-xl shadow-xl border border-gray-100 p-2 min-w-[180px] animate-in slide-in-from-bottom-5 duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 p-2 min-w-[180px] animate-in slide-in-from-bottom-5 duration-200">
             <button
               onClick={() => {
                 setCreating(true);
                 setIsMenuOpen(false);
               }}
-              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors text-left"
+              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors text-left"
             >
               <Folder className="w-5 h-5" /> New Folder
             </button>
@@ -932,7 +932,7 @@ export default function Dashboard() {
                 setIsUploadOpen(true);
                 setIsMenuOpen(false);
               }}
-              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors text-left"
+              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors text-left"
             >
               <FileText className="w-5 h-5" /> Upload File
             </button>
@@ -942,7 +942,7 @@ export default function Dashboard() {
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className={`
             w-16 h-16 bg-blue-600 hover:bg-blue-700 text-white rounded-full 
-            shadow-lg shadow-blue-300 flex items-center justify-center 
+            shadow-lg shadow-blue-300 dark:shadow-gray-950/50 flex items-center justify-center 
             transition-all duration-300 ease-in-out hover:scale-105 active:scale-95
             ${isMenuOpen ? 'rotate-135' : 'rotate-0'}
           `}

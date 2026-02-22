@@ -33,20 +33,20 @@ const DeleteModal = ({ isOpen, onClose, onConfirm, title, message, isDeleting })
             onMouseDown={(e) => e.stopPropagation()}
         >
             <div
-                className="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col transform transition-all scale-100"
+                className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-2xl dark:shadow-gray-950/50 flex flex-col transform transition-all scale-100 border border-transparent dark:border-gray-700"
                 onClick={(e) => e.stopPropagation()}
             >
 
                 {/* Header */}
-                <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                <div className="p-5 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-500" />
                         {title || "Delete Item?"}
                     </h2>
                     <button
                         onClick={onClose}
                         disabled={isDeleting}
-                        className="p-2 hover:bg-gray-100 rounded-full transition text-gray-500"
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition text-gray-500 dark:text-gray-400"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -54,17 +54,17 @@ const DeleteModal = ({ isOpen, onClose, onConfirm, title, message, isDeleting })
 
                 {/* Body */}
                 <div className="p-6">
-                    <p className="text-gray-600 text-sm leading-relaxed">
+                    <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
                         {message || "Are you sure you want to delete this? This action cannot be undone."}
                     </p>
                 </div>
 
                 {/* Footer */}
-                <div className="p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+                <div className="p-5 border-t border-gray-100 dark:border-gray-700/50 bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl flex justify-end gap-3">
                     <button
                         onClick={onClose}
                         disabled={isDeleting}
-                        className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition"
+                        className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
                     >
                         Cancel
                     </button>

@@ -44,10 +44,10 @@ const FolderCard = ({
 
     // Dynamic Border/BG Logic based on type
     const getCardStyles = () => {
-        if (active) return 'bg-blue-50 border-blue-500 shadow-md ring-1 ring-blue-500';
+        if (active) return 'bg-blue-50 border-blue-500 shadow-md ring-1 ring-blue-500 dark:bg-blue-500/20 dark:border-blue-500/50 dark:ring-blue-500/50';
 
         // Base styles
-        let styles = 'bg-white border-transparent hover:-translate-y-1 hover:shadow-md hover:border-gray-200';
+        let styles = 'bg-white border-transparent hover:-translate-y-1 hover:shadow-md hover:border-gray-200 dark:bg-[#1c1e21] dark:border-gray-800/60 dark:hover:border-gray-700/80 dark:hover:bg-[#25282c]';
 
         return styles;
     };
@@ -74,7 +74,7 @@ const FolderCard = ({
         >
             {/* Icon - with dynamic background */}
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-3 transition-colors 
-        ${active ? 'bg-white' : (item.type === 'folder' ? 'bg-blue-50 group-hover:bg-blue-100' : theme.light)}`}>
+        ${active ? 'bg-white dark:bg-[#15171e]' : (item.type === 'folder' ? 'bg-blue-50 group-hover:bg-blue-100 dark:bg-blue-500/10 dark:group-hover:bg-blue-500/20' : theme.light)}`}>
                 {getIcon()}
             </div>
 
@@ -87,7 +87,7 @@ const FolderCard = ({
                     <input
                         autoFocus
                         type="text"
-                        className={`text-center text-sm font-medium bg-white border border-blue-500 py-0.5 outline-none shadow-lg min-w-0
+                        className={`text-center text-sm font-medium bg-white dark:bg-gray-800 border border-blue-500 dark:border-blue-400 py-0.5 outline-none shadow-lg min-w-0 dark:text-white
                             ${item.type === 'file' ? 'rounded-l border-r-0 flex-1' : 'rounded w-full'}
                         `}
                         value={renameValue}
@@ -108,8 +108,8 @@ const FolderCard = ({
             ) : (
                 <span
                     onClick={onNameClick}
-                    className={`text-sm font-medium truncate w-full text-center px-1 rounded hover:bg-gray-100/50 cursor-text
-            ${active ? 'text-blue-900' : 'text-gray-700'}
+                    className={`text-sm font-medium truncate w-full text-center px-1 rounded hover:bg-gray-100/50 dark:hover:bg-gray-700/50 cursor-text
+            ${active ? 'text-blue-900 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}
           `}
                 >
                     {item.name || item.fileName}
@@ -118,7 +118,7 @@ const FolderCard = ({
 
             {/* Size */}
             {!isEditing && !isGhost && item.type === 'file' && (
-                <span className="text-[10px] text-gray-400 mt-1 uppercase tracking-wide font-medium">
+                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wide font-medium">
                     {item.size ? `${(item.size / 1024).toFixed(0)} KB` : 'PDF'}
                 </span>
             )}

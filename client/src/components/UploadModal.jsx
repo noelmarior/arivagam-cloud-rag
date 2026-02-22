@@ -84,24 +84,25 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete, sessionId })
 
   return ReactDOM.createPortal(
     <div
-      className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 bg-black/60 dark:bg-black/80 z-[9999] flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in duration-200"
       onClick={(e) => {
         e.stopPropagation();
         onClose();
       }}
       onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       <div
-        className="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
+        className="bg-white dark:bg-[#1c1e21] border border-transparent dark:border-gray-800/60 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
 
         {/* Header */}
-        <div className="p-5 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <UploadCloud className="w-5 h-5 text-blue-600" /> Upload Files
+        <div className="p-5 border-b border-gray-100 dark:border-gray-800/60 flex justify-between items-center bg-white dark:bg-[#1c1e21] rounded-t-2xl">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <UploadCloud className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Upload Files
           </h2>
-          <button onClick={onClose} disabled={uploading} className="p-2 hover:bg-gray-100 rounded-full transition text-gray-500">
+          <button onClick={onClose} disabled={uploading} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition text-gray-500 dark:text-gray-400">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -111,13 +112,13 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete, sessionId })
           {!uploading && (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-blue-200 bg-blue-50/50 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition group"
+              className="border-2 border-dashed border-blue-200 dark:border-blue-500/30 bg-blue-50/50 dark:bg-blue-500/10 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-500/20 hover:border-blue-400 dark:hover:border-blue-400 transition group"
             >
-              <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition">
-                <UploadCloud className="w-6 h-6 text-blue-500" />
+              <div className="w-12 h-12 bg-white dark:bg-gray-800 rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                <UploadCloud className="w-6 h-6 text-blue-500 dark:text-blue-400" />
               </div>
-              <p className="text-sm font-semibold text-blue-900">Click to select files</p>
-              <p className="text-xs text-blue-600 mt-1 max-w-[200px] text-center">
+              <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Click to select files</p>
+              <p className="text-xs text-blue-600 dark:text-blue-400/80 mt-1 max-w-[200px] text-center">
                 Supported: PDF, TXT, DOCX, XLSX, PNG, JPG
               </p>
               <input
@@ -135,17 +136,17 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete, sessionId })
           {files.length > 0 && (
             <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
               {files.map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-100 dark:border-gray-700/50">
                   <div className="flex items-center gap-3 truncate">
-                    <FileText className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-700 truncate max-w-[200px]">{file.name}</span>
+                    <FileText className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]">{file.name}</span>
                   </div>
 
                   {/* Status Icons */}
-                  {progress[file.name] === 'uploading' && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
-                  {progress[file.name] === 'done' && <CheckCircle className="w-4 h-4 text-green-500" />}
-                  {progress[file.name] === 'error' && <AlertCircle className="w-4 h-4 text-red-500" />}
-                  {!progress[file.name] && <button onClick={() => setFiles(files.filter(f => f !== file))}><X className="w-4 h-4 text-gray-400 hover:text-red-500" /></button>}
+                  {progress[file.name] === 'uploading' && <Loader2 className="w-4 h-4 text-blue-500 dark:text-blue-400 animate-spin" />}
+                  {progress[file.name] === 'done' && <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />}
+                  {progress[file.name] === 'error' && <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-400" />}
+                  {!progress[file.name] && <button onClick={() => setFiles(files.filter(f => f !== file))}><X className="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400" /></button>}
                 </div>
               ))}
             </div>
@@ -153,8 +154,8 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete, sessionId })
         </div>
 
         {/* Footer */}
-        <div className="p-5 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
-          <button onClick={onClose} disabled={uploading} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition">Cancel</button>
+        <div className="p-5 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50 dark:bg-[#15171e] rounded-b-2xl flex justify-end gap-3">
+          <button onClick={onClose} disabled={uploading} className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition">Cancel</button>
           <button
             onClick={handleUpload}
             disabled={files.length === 0 || uploading}
