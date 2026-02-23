@@ -11,7 +11,10 @@ import Reset from './pages/Reset';
 import SetNewPassword from './pages/SetNewPassword';
 import Layout from './components/Layout';
 import FileView from './pages/FileView';
-import axiosInstance from './api/axios'; // ✅ ADD THIS
+import axiosInstance from './api/axios';
+import axios from 'axios';
+
+axios.defaults.withCredentials = true;
 
 // ✅ Waking Up Screen Component
 const WakingUpScreen = () => (

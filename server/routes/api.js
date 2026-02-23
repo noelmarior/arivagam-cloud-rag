@@ -55,54 +55,85 @@ const upload = multer({ storage: storage });
 // --- MIDDLEWARE ---
 const requireAuth = require('../middleware/requireAuth');
 
-// --- ROUTES ---
+// const {
+//   testDbConnection,
+//   testPineconeConnection,
+//   testOpenAIConnection,
+//   debugUserContext,
+// } = require('../controllers/apiController');
 
-// Health Check
-router.get('/health', (req, res) => res.json({ status: 'OK' }));
+// Using the new cookie-based 'protect' middleware
+const { protect } = require('../middleware/requireAuth');
 
-// 1. Folder Routes
-router.post('/folders', requireAuth, folderController.createFolder);
-router.get('/folders/:folderId', requireAuth, folderController.getFolderContents);
-router.put('/folders/:id', requireAuth, folderController.updateFolder); // ✅ Add this for folder rename
-router.delete('/folders/:id', requireAuth, folderController.deleteFolder); // ✅ Add this for folder delete
+// --- Health Check Routes (Public) ---
+// router.get('/health', testDbConnection);
+// router.get('/health/pinecone', testPineconeConnection);
+// router.get('/health/openai', testOpenAIConnection);
 
-// 2. File Routes
-router.post('/upload', requireAuth, (req, res, next) => {
-  console.log("📨 Request received at /upload endpoint");
+// --- PROTECTED ROUTES ---
 
+// 1. Diagnostics
+// router.get('/test-db', protect, testDbConnection);
+// router.get('/test-pinecone', protect, testPineconeConnection);
+// router.get('/test-openai', protect, testOpenAIConnection);
+// router.get('/debug-user', protect, debugUserContext);
+
+// 2. Files
+// Upload (Includes chunking logic)
+router.post('/upload', protect, (req, res, next) => {
+  // console.log("Incoming file upload request..."); 
   upload.single('file')(req, res, (err) => {
     if (err) {
-      // This is the error log you are missing!
       console.error("❌ MULTER/CLOUDINARY CRASH:", err);
       return res.status(500).json({ error: err.message, details: err });
     }
-    console.log("✅ Multer accepted file, passing to controller...");
     next();
   });
 }, fileController.uploadFile);
-router.get('/files', requireAuth, fileController.getAllFiles);
-router.get('/files/search', requireAuth, fileController.searchFiles);
-router.get('/files/:id', requireAuth, fileController.getFileById);
-router.put('/files/:id', requireAuth, fileController.updateFile); // ✅ Keep only this PUT route
-router.delete('/files/:id', requireAuth, fileController.deleteFile);
+router.get('/files', protect, fileController.getAllFiles);
+router.get('/files/search', protect, fileController.searchFiles);
+router.get('/files/:id', protect, fileController.getFileById);
+router.put('/files/:id', protect, fileController.updateFile); // ✅ Keep only this PUT route
+router.delete('/files/:id', protect, fileController.deleteFile);
+
 
 // 3. Chat & Session Routes (Consolidated)
 // Initialization (Start Session)
-router.post('/sessions/init', requireAuth, chatController.initializeSession);
+router.post('/sessions/init', protect, chatController.initializeSession);
+
 // Messaging
-router.post('/chat/message', requireAuth, chatController.sendMessage);
-router.put('/chat/message', requireAuth, chatController.updateLastMessage); // Update last message
-// Session Management
-router.get('/sessions', requireAuth, sessionController.getSessions);      // Sidebar List
-router.get('/sessions/:id', requireAuth, sessionController.getSession);   // Single Session
-router.put('/sessions/:id', requireAuth, sessionController.updateSessionName); // Rename
-router.patch('/sessions/:id/pin', requireAuth, sessionController.togglePinSession); // Pin/Unpin
-router.post('/sessions/:id/sources', requireAuth, sessionController.addSourcesToSession); // Add Sources
-router.delete('/sessions/:id', requireAuth, sessionController.deleteSession); // Delete
+router.post('/chat/message', protect, chatController.sendMessage);
+router.put('/chat/message', protect, chatController.updateLastMessage); // Update last message
 
-// 4. Style Template Routes
-router.get('/styles', requireAuth, styleController.getStyles);
-router.post('/styles', requireAuth, styleController.createStyle);
-router.delete('/styles/:id', requireAuth, styleController.deleteStyle);
+// Get all sessions
+router.get('/sessions', protect, sessionController.getSessions);
 
-module.exports = router; 
+// Get a specific session explicitly
+router.get('/sessions/:id', protect, sessionController.getSession);
+
+// Update/rename session explicitly
+router.put('/sessions/:id', protect, sessionController.updateSessionName);
+
+// Pin/Unpin session
+router.patch('/sessions/:id/pin', protect, sessionController.togglePinSession);
+
+// Add Sources to session
+router.post('/sessions/:id/sources', protect, sessionController.addSourcesToSession);
+
+// Delete session explicitly
+router.delete('/sessions/:id', protect, sessionController.deleteSession);
+
+
+// 4. Folders
+
+router.post('/folders', protect, folderController.createFolder);
+router.get('/folders/:folderId', protect, folderController.getFolderContents);
+router.put('/folders/:id', protect, folderController.updateFolder); // ✅ Added PUT route
+router.delete('/folders/:id', protect, folderController.deleteFolder);
+
+// 5. Style Template Routes
+router.get('/styles', protect, styleController.getStyles);
+router.post('/styles', protect, styleController.createStyle);
+router.delete('/styles/:id', protect, styleController.deleteStyle);
+
+module.exports = router;

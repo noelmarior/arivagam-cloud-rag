@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 // --- IMPORTS ---
 // If you have these files, keep them. If not, comment them out.
@@ -28,12 +29,15 @@ app.use(cors({
     /^https:\/\/.*\.vercel\.app$/ // All Vercel preview deployments
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-  // credentials: true // ❌ Removed - not needed for JWT in headers
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 // Parse JSON
 app.use(express.json());
+
+// Cookie Parser Middleware
+app.use(cookieParser());
 
 // Request Logger
 app.use((req, res, next) => {

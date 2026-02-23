@@ -8,7 +8,17 @@ const nodemailer = require('nodemailer');
 // Helper to generate token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', {
-    expiresIn: '30d',
+    expiresIn: '1h',
+  });
+};
+
+// Helper to set cookie
+const setAuthCookie = (res, token) => {
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 60 * 60 * 1000, // 1 hour
   });
 };
 
@@ -57,11 +67,12 @@ exports.registerUser = async (req, res) => {
 
     if (user) {
       console.log("✅ [Register] Success! User ID:", user._id);
+      const token = generateToken(user._id);
+      setAuthCookie(res, token);
       res.status(201).json({
         _id: user._id,
         name: user.name,
         email: user.email,
-        token: generateToken(user._id),
       });
     } else {
       console.log("❌ [Register] Invalid user data (Creation failed)");
@@ -114,12 +125,22 @@ exports.loginUser = async (req, res) => {
     }
 
     if (isMatch) {
-      console.log("✅ [Login] Success");
+      console.log(`[Login] Success for: ${user.email}`);
+      const token = generateToken(user._id);
+
+      // Attach the HttpOnly cookie
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: true, // Required for cross-origin Vercel -> Render
+        sameSite: 'none', // Required for cross-origin Vercel -> Render
+        maxAge: 60 * 60 * 1000 // 1 hour
+      });
+
+      // Do NOT send the token in this JSON body anymore
       res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
-        token: generateToken(user._id),
       });
     } else {
       console.log("❌ [Login] Failed: Invalid Credentials");
@@ -129,6 +150,17 @@ exports.loginUser = async (req, res) => {
     console.error("🔥 [Login] CRASH:", error);
     res.status(500).json({ error: error.message });
   }
+};
+
+// @desc    Logout user
+// @route   POST /api/auth/logout
+exports.logoutUser = (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none'
+  });
+  res.status(200).json({ message: 'Logged out successfully' });
 };
 
 // @desc    Check if email exists
