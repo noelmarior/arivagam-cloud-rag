@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const argon2 = require('argon2');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
@@ -14,7 +15,7 @@ const generateToken = (id) => {
 // @desc    Register new user
 // @route   POST /api/auth/register
 exports.registerUser = async (req, res) => {
-  console.log("📝 [Register] Request Received:", req.body); // DEBUG LOG 1
+  console.log(`📝 [Register] Request Received for email: ${req.body.email}`);
 
   const { name, email, password } = req.body;
 
@@ -26,8 +27,6 @@ exports.registerUser = async (req, res) => {
     }
 
     // Password Validation
-    // Password Validation
-    // Regex: At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char (any non-alphanumeric)
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
     if (!passwordRegex.test(password)) {
       console.log("❌ [Register] Weak password");
@@ -43,9 +42,18 @@ exports.registerUser = async (req, res) => {
       return res.status(400).json({ error: 'User already exists' });
     }
 
-    // 3. Create User
+    // 3. Hash password using argon2 (id variant is default)
+    console.log("🔄 [Register] Hashing password...");
+    let hashedPassword;
+    try {
+      hashedPassword = await argon2.hash(password, { type: argon2.argon2id });
+    } catch (err) {
+      throw new Error('Hashing failed');
+    }
+
+    // 4. Create User
     console.log("🔄 [Register] Creating user in DB...");
-    const user = await User.create({ name, email, password });
+    const user = await User.create({ name, email, password: hashedPassword });
 
     if (user) {
       console.log("✅ [Register] Success! User ID:", user._id);
@@ -75,15 +83,37 @@ exports.loginUser = async (req, res) => {
   try {
     const user = await User.findOne({ email });
 
-    // TIMING ATTACK DISTINCTION MITIGATION
-    // If user is not found, compare against a dummy hash to consume similar time
+    // Timing attack mitigation: if user not found, perform a dummy hash check
     if (!user) {
-      // Valid bcrypt hash (cost 10) to ensure substantial comparison time
-      const dummyHash = '$2a$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.9cGLcZEiGDMVr5yUP1KUOYTa';
-      await bcrypt.compare(password, dummyHash);
+      const dummyHash = '$argon2id$v=19$m=4096,t=3,p=1$dummySaltdummySalt$dummyHashdummyHash12345';
+      try { await argon2.verify(dummyHash, password); } catch (e) { }
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    if (user && (await user.matchPassword(password))) {
+    let isMatch = false;
+
+    // Check hash prefix to determine the algorithm
+    if (user.password.startsWith('$2')) {
+      // Legacy bcrypt hash
+      isMatch = await bcrypt.compare(password, user.password);
+
+      if (isMatch) {
+        // Opportunistic Hashing: Re-hash with argon2 and update DB
+        console.log("🔄 [Login] Opportunistic upgrade from bcrypt to argon2...");
+        const newHash = await argon2.hash(password, { type: argon2.argon2id });
+        user.password = newHash;
+        await user.save();
+      }
+    } else if (user.password.startsWith('$argon2')) {
+      // Modern argon2 hash
+      try {
+        isMatch = await argon2.verify(user.password, password);
+      } catch (err) {
+        isMatch = false;
+      }
+    }
+
+    if (isMatch) {
       console.log("✅ [Login] Success");
       res.json({
         _id: user._id,
@@ -93,7 +123,6 @@ exports.loginUser = async (req, res) => {
       });
     } else {
       console.log("❌ [Login] Failed: Invalid Credentials");
-      // GENERIC MESSAGE for both cases as requested for security
       res.status(401).json({ error: 'Invalid email or password' });
     }
   } catch (error) {
@@ -216,8 +245,11 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
-    // Set new password (the pre-save hook will hash it)
-    user.password = password;
+    // Explicitly hash using argon2id since pre-save hook is removed
+    const newHash = await argon2.hash(password, { type: argon2.argon2id });
+
+    // Set new password
+    user.password = newHash;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
 
