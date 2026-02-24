@@ -11,6 +11,7 @@ import Reset from './pages/Reset';
 import SetNewPassword from './pages/SetNewPassword';
 import Layout from './components/Layout';
 import FileView from './pages/FileView';
+import Landing from './pages/Landing';
 import axiosInstance from './api/axios';
 import axios from 'axios';
 
@@ -79,7 +80,7 @@ function App() {
       <NotepadProvider>
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<Reset />} />
