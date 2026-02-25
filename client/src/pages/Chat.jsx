@@ -255,7 +255,7 @@ const Chat = () => {
   }
 
   return (
-    <div className="flex h-screen bg-white dark:bg-[#15171e] font-sans overflow-hidden">
+    <div className="flex h-full bg-white dark:bg-[#15171e] font-sans overflow-hidden">
 
       <SourceSelector
         isOpen={isAddSourceOpen}
