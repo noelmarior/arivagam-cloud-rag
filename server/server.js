@@ -18,6 +18,8 @@ const apiRoutes = require('./routes/api');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // --- 2. MIDDLEWARE ---
 
 // Configure CORS (Only once!)
