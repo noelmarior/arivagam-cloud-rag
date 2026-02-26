@@ -219,7 +219,7 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     // Create reset url
-    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.CORS || 'http://localhost:5173'}/reset-password/${resetToken}`;
 
     const message = `
       <p>Hi ${user.name},</p>
