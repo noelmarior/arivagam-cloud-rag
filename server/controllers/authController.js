@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const argon2 = require('argon2');
 const crypto = require('crypto');
 const { google } = require('googleapis');
+const { validateEmailStrict } = require('../utils/emailValidator');
 
 // Initialize the OAuth2 HTTP Client
 const oAuth2Client = new google.auth.OAuth2(
@@ -56,6 +57,15 @@ exports.registerUser = async (req, res) => {
       });
     }
 
+    // Email strictness validation
+    try {
+      console.log("🔄 [Register] Validating email strictness...");
+      await validateEmailStrict(email);
+    } catch (error) {
+      console.log("❌ [Register] Email validation failed:", error.message);
+      return res.status(400).json({ error: error.message });
+    }
+
     // 2. Check if user exists
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -72,19 +82,54 @@ exports.registerUser = async (req, res) => {
       throw new Error('Hashing failed');
     }
 
-    // 4. Create User
+    // 4. Generate secure token & hash it
+    console.log("🔄 [Register] Generating email verification token...");
+    const rawToken = crypto.randomBytes(20).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    // 5. Create User
     console.log("🔄 [Register] Creating user in DB...");
-    const user = await User.create({ name, email, password: hashedPassword });
+    const user = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      emailVerificationToken: hashedToken,
+      emailVerificationExpire: Date.now() + 15 * 60 * 1000 // Expires in 15 minutes
+    });
 
     if (user) {
       console.log("✅ [Register] Success! User ID:", user._id);
-      const token = generateToken(user._id);
-      setAuthCookie(res, token);
-      res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
+
+      // 6. Build the raw HTML email
+      const verifyUrl = `${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://arivagam.vercel.app' : 'http://localhost:5173')}/verify-email/${rawToken}`;
+      const subject = 'Verify your Arivagam Email Address';
+      const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+
+      const messageRaw = [
+        `From: Arivagam <${process.env.EMAIL_USERNAME}>`,
+        `To: ${user.email}`,
+        'Content-type: text/html; charset=utf-8',
+        'MIME-Version: 1.0',
+        `Subject: ${utf8Subject}`,
+        '',
+        `<h1>Welcome, ${name}!</h1>
+         <p>Please verify your email by clicking the link below:</p>
+         <a href="${verifyUrl}" style="display:inline-block;padding:10px 20px;background-color:#2563eb;color:white;text-decoration:none;border-radius:5px;">Verify Email</a>
+         <p>This link will expire in 15 minutes.</p>`
+      ].join('\n');
+
+      const encodedMessage = Buffer.from(messageRaw).toString('base64url');
+
+      // 7. Send the email using Google Gmail v1 strictly
+      console.log("🔄 [Register] Sending verification email...");
+      await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw: encodedMessage,
+        },
       });
+
+      res.status(201).json({ message: 'Registration successful. Please check your email to verify your account.' });
     } else {
       console.log("❌ [Register] Invalid user data (Creation failed)");
       res.status(400).json({ error: 'Invalid user data' });
@@ -136,6 +181,10 @@ exports.loginUser = async (req, res) => {
     }
 
     if (isMatch) {
+      if (!user.isEmailVerified) {
+        return res.status(401).json({ error: 'Please verify your email before logging in.' });
+      }
+
       console.log(`[Login] Success for: ${user.email}`);
       const token = generateToken(user._id);
 
@@ -312,5 +361,57 @@ exports.resetPassword = async (req, res) => {
   } catch (error) {
     console.error("🔥 [ResetPassword] Error:", error);
     res.status(500).json({ error: "Server error" });
+  }
+};
+
+// @desc    Verify Email
+// @route   GET /api/auth/verify-email/:token
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // 1. Hash the incoming param token
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // 2. Find user where token matches and expire is in the future
+    const user = await User.findOne({
+      emailVerificationToken: hashedToken,
+      emailVerificationExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired verification token' });
+    }
+
+    // 3. Nullify token fields and set as verified
+    user.isEmailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpire = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Email verified successfully. You may now log in.' });
+
+  } catch (error) {
+    console.error('🔥 [VerifyEmail] Error:', error);
+    res.status(500).json({ error: 'Server error during email verification' });
+  }
+};
+
+// @desc    Check Verification Status
+// @route   GET /api/auth/verification-status/:email
+exports.checkVerificationStatus = async (req, res) => {
+  try {
+    const { email } = req.params;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ isVerified: !!user.isEmailVerified });
+  } catch (error) {
+    console.error('🔥 [CheckVerification] Error:', error);
+    res.status(500).json({ error: 'Server error checking verification status' });
   }
 };

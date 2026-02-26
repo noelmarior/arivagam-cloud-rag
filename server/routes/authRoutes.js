@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
-const { registerUser, loginUser, checkEmail, forgotPassword, resetPassword, logoutUser } = require('../controllers/authController');
+const { registerUser, loginUser, checkEmail, forgotPassword, resetPassword, logoutUser, verifyEmail, checkVerificationStatus } = require('../controllers/authController');
 
 // Strict limiter: Max 5 attempts per 15-minute window for login & forgot-password
 const strictLimiter = rateLimit({
@@ -27,5 +27,7 @@ router.post('/logout', logoutUser);
 router.post('/forgot-password', strictLimiter, forgotPassword);
 router.post('/reset-password/:token', resetPassword);
 router.post('/check-email', checkEmail);
+router.get('/verify-email/:token', verifyEmail);
+router.get('/verification-status/:email', checkVerificationStatus);
 
 module.exports = router;

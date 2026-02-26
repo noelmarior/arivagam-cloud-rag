@@ -12,12 +12,13 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [registerError, setRegisterError] = useState(''); // ✅ ADD - was missing!
+  const [registerSuccess, setRegisterSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);      // ✅ ADD - was missing!
 
   const [emailStatus, setEmailStatus] = useState('idle');
   const [isEmailValid, setIsEmailValid] = useState(false);
 
-  const { register, user } = useAuth();
+  const { register, login, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -73,6 +74,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setRegisterError(''); // ✅ Use registerError, not error
+    setRegisterSuccess('');
     setIsLoading(true);
 
     // ✅ Guard: Block if email is taken
@@ -91,7 +93,7 @@ const Register = () => {
 
     try {
       await register(name, email, password); // ✅ Use useAuth's register function
-      navigate('/dashboard');
+      setRegisterSuccess('Verify Registered Email for proceeding');
     } catch (error) {
       if (error.response?.status === 400) {
         setRegisterError(error.response.data.error || 'Registration failed.');
@@ -102,6 +104,31 @@ const Register = () => {
       setIsLoading(false);
     }
   };
+
+  // ✅ Auto-login and Redirection Polling
+  useEffect(() => {
+    let interval;
+    if (registerSuccess) {
+      interval = setInterval(async () => {
+        try {
+          const res = await axiosInstance.get(`/auth/verification-status/${encodeURIComponent(email)}`);
+          if (res.data.isVerified) {
+            clearInterval(interval);
+            // Attempt auto-login now that it's verified
+            try {
+              await login(email, password);
+              navigate('/dashboard');
+            } catch (err) {
+              setRegisterError('Verification successful, but auto-login failed. Please sign in safely.');
+            }
+          }
+        } catch (error) {
+          console.log('Waiting for verification...');
+        }
+      }, 3000); // Check every 3 seconds
+    }
+    return () => clearInterval(interval);
+  }, [registerSuccess, email, password, login, navigate]);
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -181,6 +208,20 @@ const Register = () => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-red-700 font-medium">{registerError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ✅ Register Success Message */}
+            {registerSuccess && (
+              <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-md">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <Check className="h-5 w-5 text-green-400" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-green-700 font-medium">{registerSuccess}</p>
                   </div>
                 </div>
               </div>

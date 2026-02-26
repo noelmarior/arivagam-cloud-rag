@@ -12,6 +12,7 @@ import SetNewPassword from './pages/SetNewPassword';
 import Layout from './components/Layout';
 import FileView from './pages/FileView';
 import Landing from './pages/Landing';
+import VerifyEmail from './pages/VerifyEmail';
 import axiosInstance from './api/axios';
 import axios from 'axios';
 
@@ -85,6 +86,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<Reset />} />
           <Route path="/reset-password/:token" element={<SetNewPassword />} />
+          <Route path="/verify-email/:token" element={<VerifyEmail />} />
 
           {/* Protected Routes (Locked) */}
           <Route element={<RequireAuth />}>
