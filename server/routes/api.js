@@ -108,6 +108,9 @@ router.put('/chat/message', protect, chatController.updateLastMessage); // Updat
 // Get all sessions
 router.get('/sessions', protect, sessionController.getSessions);
 
+// Search sessions explicitly (Must be before /:id)
+router.get('/sessions/search', protect, sessionController.searchSessions);
+
 // Get a specific session explicitly
 router.get('/sessions/:id', protect, sessionController.getSession);
 
@@ -116,6 +119,9 @@ router.put('/sessions/:id', protect, sessionController.updateSessionName);
 
 // Pin/Unpin session
 router.patch('/sessions/:id/pin', protect, sessionController.togglePinSession);
+
+// Archive/Unarchive session
+router.patch('/sessions/:id/archive', protect, sessionController.toggleArchiveSession);
 
 // Add Sources to session
 router.post('/sessions/:id/sources', protect, sessionController.addSourcesToSession);

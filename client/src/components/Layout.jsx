@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { BookOpen, Plus, MessageSquare, MoreHorizontal, Trash2, Edit2, Pin, Menu, LogOut, ChevronUp, PenLine, Sun, Moon, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { BookOpen, Plus, MessageSquare, MoreHorizontal, Trash2, Edit2, Pin, Menu, LogOut, ChevronUp, PenLine, Sun, Moon, PanelLeftClose, PanelLeftOpen, Archive, Search } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useSidebar } from '../hooks/useSidebar';
 import api from '../api/axios';
@@ -22,6 +22,12 @@ const Layout = () => {
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
   const { isOpen: isSidebarOpen, isMobile, closeSidebar, openSidebar, toggleSidebar } = useSidebar();
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Archive and Search states
+  const [isArchiveView, setIsArchiveView] = useState(false);
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef(null);
 
   // Session management states
   const [activeMenuId, setActiveMenuId] = useState(null);
@@ -50,8 +56,10 @@ const Layout = () => {
   const userMenuRef = useRef(null);
 
   // Load sessions
-  const loadSessions = () => {
-    api.get('/sessions')
+  const loadSessions = (query = '') => {
+    const endpoint = query ? `/sessions/search?q=${query}` : `/sessions?archived=${isArchiveView}`;
+
+    api.get(endpoint)
       .then(res => {
         if (Array.isArray(res.data)) {
           // Explicit Client-Side Sort (Safety Net)
@@ -77,8 +85,29 @@ const Layout = () => {
   };
 
   useEffect(() => {
-    loadSessions();
-  }, [location.pathname]);
+    const timeoutId = setTimeout(() => {
+      loadSessions(searchQuery);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [location.pathname, isArchiveView, searchQuery]);
+
+  // Handle Search Input Outside Click
+  useEffect(() => {
+    const handleClickOutsideSearch = (e) => {
+      // Don't close if search input is explicitly clicked
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target)) {
+        if (!searchQuery.trim()) {
+          setIsSearchVisible(false);
+        }
+      }
+    };
+
+    if (isSearchVisible) {
+      document.addEventListener("mousedown", handleClickOutsideSearch);
+    }
+
+    return () => document.removeEventListener("mousedown", handleClickOutsideSearch);
+  }, [isSearchVisible, searchQuery]);
 
   // Close session menu on outside click
   useEffect(() => {
@@ -240,33 +269,117 @@ const Layout = () => {
           </div>
 
           {/* NAVIGATION */}
-          <div className="p-3 space-y-3 mt-2">
+          <div className="p-3 grid grid-cols-2 gap-2 mt-2 border-b border-gray-50 dark:border-gray-800/60 pb-3">
             <button
-              onClick={() => setIsSourceModalOpen(true)}
-              className="flex items-center gap-3 w-full px-4 py-3 bg-white dark:bg-blue-600/10 border border-gray-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-600 hover:text-white dark:hover:text-white hover:border-blue-600 dark:hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium"
+              onClick={() => {
+                if (isArchiveView) return; // Disable new session in archive view
+                setIsSourceModalOpen(true);
+              }}
+              className={`flex flex-col items-center justify-center gap-1.5 w-full p-2.5 bg-white dark:bg-blue-600/10 border border-gray-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white hover:border-blue-600 dark:hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm ${isArchiveView ? 'opacity-50 cursor-not-allowed hover:bg-white dark:hover:bg-blue-600/10 hover:text-blue-600 dark:hover:text-blue-400 hover:border-gray-100 dark:hover:border-blue-500/20 shadow-none' : 'hover:shadow-md'} font-medium`}
             >
-              <Plus className="w-5 h-5" /> New Session
+              <Plus className="w-5 h-5" />
+              <span className="text-xs">New Session</span>
             </button>
 
             <button
               onClick={() => navigate('/dashboard')}
-              className={`flex items-center gap-3 w-full px-4 py-3 border rounded-xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white hover:border-blue-600 dark:hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium
+              className={`flex flex-col items-center justify-center gap-1.5 w-full p-2.5 bg-white dark:bg-blue-600/10 border border-gray-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white hover:border-blue-600 dark:hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium
               ${location.pathname === '/dashboard' || location.pathname.startsWith('/folder')
-                  ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/20 dark:border-blue-500/30 dark:text-blue-400'
-                  : 'bg-white border-gray-100 text-blue-600 dark:bg-[#1c1e21] dark:border-gray-800/60 dark:text-gray-300'}`}
+                  ? 'bg-blue-50 border-blue-200 dark:bg-blue-500/20 dark:border-blue-500/30'
+                  : ''}`}
             >
-              <BookOpen className="w-5 h-5" /> My Drive
+              <BookOpen className="w-5 h-5" />
+              <span className="text-xs">My Drive</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsSearchVisible(true);
+                setTimeout(() => searchInputRef.current?.focus(), 50);
+              }}
+              className="flex flex-col items-center justify-center gap-1.5 w-full p-2.5 bg-white dark:bg-[#1c1e21] border border-gray-100 dark:border-gray-800/60 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white hover:border-blue-600 dark:hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium"
+            >
+              <Search className="w-5 h-5" />
+              <span className="text-xs">Search</span>
+            </button>
+
+            <button
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.add('ring-2', 'ring-blue-500', 'scale-105');
+              }}
+              onDragLeave={(e) => {
+                e.currentTarget.classList.remove('ring-2', 'ring-blue-500', 'scale-105');
+              }}
+              onDrop={async (e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove('ring-2', 'ring-blue-500', 'scale-105');
+                const sessionId = e.dataTransfer.getData('sessionId');
+                if (sessionId) {
+                  try {
+                    const newArchiveStatus = !isArchiveView;
+                    await api.patch(`/sessions/${sessionId}/archive`, { isArchived: newArchiveStatus });
+                    loadSessions(searchQuery);
+                    if (location.pathname.includes(sessionId)) navigate('/dashboard');
+                  } catch (err) {
+                    console.error("Failed to update status", err);
+                  }
+                }
+              }}
+              onClick={() => {
+                setIsArchiveView(!isArchiveView);
+                setSearchQuery('');
+                setIsSearchVisible(false);
+              }}
+              className={`flex flex-col items-center justify-center gap-1.5 w-full p-2.5 border rounded-xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white hover:border-blue-600 dark:hover:border-blue-600 transition-all duration-200 ease-in-out shadow-sm hover:shadow-md font-medium
+              ${isArchiveView
+                  ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/20 dark:border-blue-500/30 dark:text-blue-400'
+                  : 'bg-white border-gray-100 text-gray-600 dark:bg-[#1c1e21] dark:border-gray-800/60 dark:text-gray-300'}`}
+            >
+              {isArchiveView ? <MessageSquare className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
+              <span className="text-xs">{isArchiveView ? 'Recent' : 'Archive'}</span>
             </button>
           </div>
 
           {/* RECENT SESSIONS LIST */}
-          <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
-            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 px-1">Recent Sessions</p>
+          <div className="flex-1 overflow-y-auto px-3 py-2 mt-2 custom-scrollbar">
+            <div className="flex items-center justify-between mb-3 px-1 min-h-[28px]">
+              {isSearchVisible ? (
+                <div className="w-full relative">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search sessions..."
+                    className="w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs rounded-lg px-8 py-2 outline-none border border-gray-200 dark:border-gray-700 shadow-sm focus:border-blue-500 transition-colors"
+                  />
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                </div>
+              ) : (
+                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  {searchQuery ? 'Search Results' : (isArchiveView ? 'Archived Sessions' : 'Recent Sessions')}
+                </p>
+              )}
+            </div>
             <div className="space-y-0 pb-10">
               {sessions.map(sess => (
                 <div
                   key={sess._id}
-                  onClick={() => { if (!renamingId) navigate(`/chat/${sess._id}`) }}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('sessionId', sess._id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onClick={() => {
+                    if (!renamingId) {
+                      navigate(`/chat/${sess._id}`);
+                      if (isSearchVisible) {
+                        setIsSearchVisible(false);
+                        setSearchQuery('');
+                      }
+                    }
+                  }}
                   className={`group relative flex items-center justify-between px-3 py-1 rounded-lg cursor-pointer select-none transition-all duration-200 border
                   ${activeMenuId === sess._id ? 'z-30' : ''}
                   ${location.pathname.includes(sess._id)

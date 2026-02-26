@@ -3,14 +3,19 @@ const File = require('../models/File');
 const Folder = require('../models/Folder');
 const aiService = require('../services/aiService');
 
-// 1. Get All Sessions
+// 1. Get All Sessions (Active or Archived)
 exports.getSessions = async (req, res) => {
   try {
     const userId = req.auth.userId;
+    const isArchived = req.query.archived === 'true';
+
     // Ensure we sort by latest first
-    const sessions = await Session.find({ userId })
+    const sessions = await Session.find({
+      userId,
+      isArchived: isArchived ? true : { $ne: true }
+    })
       .sort({ lastActive: -1 })
-      .select('name lastActive isPinned createdAt'); // Fetch fields needed for sorting
+      .select('name lastActive isPinned isArchived createdAt'); // Fetch fields needed for sorting
 
     // ALWAYS return an array, even if empty
     res.json(sessions || []);
@@ -85,6 +90,49 @@ exports.togglePinSession = async (req, res) => {
       { new: true }
     );
     res.json(session);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Toggle Archive
+exports.toggleArchiveSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isArchived } = req.body; // Expects true/false
+    const userId = req.auth.userId;
+    const session = await Session.findOneAndUpdate(
+      { _id: id, userId },
+      { isArchived },
+      { new: true }
+    );
+    res.json(session);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Search Sessions
+exports.searchSessions = async (req, res) => {
+  try {
+    const { q } = req.query;
+    const userId = req.auth.userId;
+
+    if (!q) {
+      return res.json([]);
+    }
+
+    const sessions = await Session.find({
+      userId,
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { "messages.content": { $regex: q, $options: 'i' } }
+      ]
+    })
+      .sort({ lastActive: -1 })
+      .select('name lastActive isPinned isArchived createdAt');
+
+    res.json(sessions);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

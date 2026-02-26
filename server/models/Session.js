@@ -19,6 +19,7 @@ const SessionSchema = new mongoose.Schema({
   aiSummary: { type: String },
   messages: [MessageSchema],
   isPinned: { type: Boolean, default: false },
+  isArchived: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   lastActive: { type: Date, default: Date.now }
 });
