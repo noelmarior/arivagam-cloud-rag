@@ -219,7 +219,8 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     // Create reset url
-    const resetUrl = `${process.env.CORS || 'http://localhost:5173'}/reset-password/${resetToken}`;
+    const baseUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://arivagam.vercel.app' : 'http://localhost:5173');
+    const resetUrl = `${baseUrl}/reset-password/${resetToken}`;
 
     const message = `
       <p>Hi ${user.name},</p>
