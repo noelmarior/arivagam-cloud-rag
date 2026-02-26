@@ -222,17 +222,18 @@ exports.forgotPassword = async (req, res) => {
 
     try {
       const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
+        service: 'gmail',
         auth: {
-          user: process.env.SMTP_MAIL,
-          pass: process.env.SMTP_PASSWORD,
+          type: 'OAuth2',
+          user: process.env.EMAIL_USERNAME,
+          clientId: process.env.OAUTH_CLIENT_ID,
+          clientSecret: process.env.OAUTH_CLIENT_SECRET,
+          refreshToken: process.env.OAUTH_REFRESH_TOKEN,
         },
       });
 
       await transporter.sendMail({
-        from: `Arivagam <${process.env.SMTP_MAIL}>`,
+        from: `Arivagam <${process.env.EMAIL_USERNAME}>`,
         to: user.email,
         subject: 'Reset your Arivagam password',
         html: message,
