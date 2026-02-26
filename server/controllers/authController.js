@@ -3,7 +3,18 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const argon2 = require('argon2');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
+
+// Initialize the OAuth2 HTTP Client
+const oAuth2Client = new google.auth.OAuth2(
+  process.env.OAUTH_CLIENT_ID,
+  process.env.OAUTH_CLIENT_SECRET,
+  "https://developers.google.com/oauthplayground"
+);
+oAuth2Client.setCredentials({ refresh_token: process.env.OAUTH_REFRESH_TOKEN });
+
+// Initialize the Gmail HTTP API
+const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
 
 // Helper to generate token
 const generateToken = (id) => {
@@ -221,22 +232,30 @@ exports.forgotPassword = async (req, res) => {
     `;
 
     try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          type: 'OAuth2',
-          user: process.env.EMAIL_USERNAME,
-          clientId: process.env.OAUTH_CLIENT_ID,
-          clientSecret: process.env.OAUTH_CLIENT_SECRET,
-          refreshToken: process.env.OAUTH_REFRESH_TOKEN,
-        },
-      });
+      // 1. Construct the raw email string
+      const subject = 'Reset your Arivagam password';
+      const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+      const messageParts = [
+        `From: Arivagam <${process.env.EMAIL_USERNAME}>`,
+        `To: ${user.email}`,
+        'Content-Type: text/html; charset=utf-8',
+        'MIME-Version: 1.0',
+        `Subject: ${utf8Subject}`,
+        '',
+        message // This is your HTML string containing the reset link
+      ];
 
-      await transporter.sendMail({
-        from: `Arivagam <${process.env.EMAIL_USERNAME}>`,
-        to: user.email,
-        subject: 'Reset your Arivagam password',
-        html: message,
+      const messageRaw = messageParts.join('\n');
+
+      // 2. Encode it to base64url format required by Google API
+      const encodedMessage = Buffer.from(messageRaw).toString('base64');
+
+      // 3. Send the email via HTTP (Port 443), bypassing Render's SMTP block
+      await gmail.users.messages.send({
+        userId: 'me',
+        requestBody: {
+          raw: encodedMessage,
+        },
       });
 
       res.status(200).json({ success: true, message: 'Email sent successfully' });
