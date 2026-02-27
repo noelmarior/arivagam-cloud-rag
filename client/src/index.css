@@ -1,13 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-primary: #0F172A;
+    --color-bg: #FFFFFF;
+    --color-surface: #F8FAFC;
+    --color-border: #CBD5E1;
+    --color-accent: #3B82F6;
+    --font-heading: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --border-width: 1px;
+    --radius-sm: 2px;
+  }
+
   body {
-    @apply font-sans bg-gray-50 text-gray-900;
-    font-family: 'Inter', sans-serif;
+    @apply font-sans bg-white text-slate-900;
   }
 }
 

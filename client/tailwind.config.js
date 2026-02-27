@@ -4,6 +4,19 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      colors: {
+        primary: '#0F172A',
+        bg: '#FFFFFF',
+        surface: '#F8FAFC',
+        border: '#CBD5E1',
+        accent: '#3B82F6',
+        mono: '#475569',
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        heading: ['Space Grotesk', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
       keyframes: {
         // ✅ Progress bar animation
         loading: {
