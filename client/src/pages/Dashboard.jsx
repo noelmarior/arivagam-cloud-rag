@@ -718,7 +718,7 @@ export default function Dashboard() {
       {/* HEADER */}
       <div className="mb-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-          <div className="flex items-center gap-3 text-2xl font-bold text-gray-800 dark:text-gray-100">
+          <div className="font-heading tracking-tight flex items-center gap-3 text-2xl font-bold text-gray-800 dark:text-gray-100">
             {folderId ? (
               <button
                 onClick={goUp}
@@ -766,7 +766,7 @@ export default function Dashboard() {
       {!loading && allItems.length === 0 && !creating && (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500">
           <Folder className="w-20 h-20 mb-4 opacity-20" />
-          <p className="text-lg font-medium">
+          <p className="font-heading text-xl font-medium">
             {isSearching ? "No results found" : "This folder is empty"}
           </p>
         </div>

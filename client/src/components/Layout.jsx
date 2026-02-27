@@ -256,7 +256,7 @@ const Layout = () => {
           <div className="px-4 py-3 flex items-center justify-between border-b border-gray-50 dark:border-gray-800/60 h-16 shrink-0">
             <div className="flex items-center gap-3 overflow-hidden">
               <img src="/logo_mel.png" alt="Logo" className="w-8 h-8 rounded-[7px] shrink-0 object-cover shadow-sm" />
-              <span className="font-bold text-gray-900 dark:text-white tracking-tight text-xl truncate whitespace-nowrap">ARIVAGAM</span>
+              <span className="font-heading uppercase font-bold text-gray-900 dark:text-white tracking-wide text-xl truncate whitespace-nowrap">ARIVAGAM</span>
             </div>
 
             <button
@@ -357,7 +357,7 @@ const Layout = () => {
                   <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 </div>
               ) : (
-                <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                <p className="font-mono text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
                   {searchQuery ? 'Search Results' : (isArchiveView ? 'Archived Sessions' : 'Recent Sessions')}
                 </p>
               )}

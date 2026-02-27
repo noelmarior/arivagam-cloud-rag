@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Files, Crosshair, EyeOff } from 'lucide-react';
-import logo from '../assets/logo.png';
+import logo from '../assets/logo_mel.png';
 
 const MockupVisual = () => {
     const [step, setStep] = useState(0);
@@ -148,7 +148,7 @@ const MockupVisual = () => {
                     {step >= 4 && (
                         <div className="animate-fade-in self-start max-w-[95%] flex gap-3">
                             <div className="w-8 h-8 flex-shrink-0 bg-[#0F172A] rounded-full flex items-center justify-center mt-0.5 shadow-sm overflow-hidden border-2 border-transparent">
-                                <img src={logo} className="w-full h-full object-cover scale-110" alt="AI" />
+                                <img src={logo} className="w-5 h-5 object-contain" alt="AI" />
                             </div>
                             <div className="flex-1 bg-bg border border-border p-4.5 rounded-2xl rounded-tl-sm shadow-sm relative">
                                 {step === 4 ? (
@@ -212,7 +212,7 @@ const Landing = () => {
                     {/* Logo */}
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
                         <img src="/logo_mel.png" alt="ARIVAGAM Logo" className="w-8 h-8 object-contain" />
-                        <span className="font-heading uppercase tracking-wide font-bold text-lg">ARIVAGAM</span>
+                        <span className="font-heading uppercase tracking-wide font-bold text-2xl">ARIVAGAM</span>
                     </div>
 
                     {/* Right CTA */}

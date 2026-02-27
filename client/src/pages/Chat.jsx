@@ -309,7 +309,7 @@ const Chat = () => {
       {/* --- LEFT PANEL: SOURCES --- */}
       <div className="w-80 bg-gray-50 dark:bg-[#1c1e21] border-r border-gray-200 dark:border-gray-800/60 flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-gray-200 dark:border-gray-800/60">
-          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+          <h2 className="font-mono text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             <FileText className="w-4 h-4" /> Sources
           </h2>
         </div>
@@ -328,7 +328,7 @@ const Chat = () => {
                     <div className={`p-1.5 ${theme.light} rounded-md ${theme.text}`}>
                       <theme.Icon className="w-4 h-4" />
                     </div>
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate">
+                    <span className="font-mono text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">
                       {file.fileName}
                     </span>
                   </div>
@@ -355,7 +355,7 @@ const Chat = () => {
       {/* --- RIGHT PANEL: CHAT --- */}
       <div className="flex-1 flex flex-col relative bg-white dark:bg-[#15171e]">
         <div className="h-16 border-b border-gray-100 dark:border-gray-800/60 flex justify-between items-center px-6 bg-white dark:bg-[#1c1e21] sticky top-0 z-10 shadow-sm">
-          <h1 className="font-bold text-gray-800 dark:text-gray-100 text-lg">
+          <h1 className="font-heading font-bold text-gray-800 dark:text-gray-100 text-xl tracking-tight">
             {currentSession ? currentSession.name : "Study Session"}
           </h1>
 
@@ -531,7 +531,7 @@ const Chat = () => {
             {/* Optional: Helper Text to confirm style */}
             <div className="max-w-4xl mx-auto mt-1 text-center">
               {activeStyle && (
-                <p className="text-[10px] text-blue-500 font-medium">
+                <p className="font-mono text-[10px] text-blue-500 uppercase tracking-wider font-semibold">
                   Using Custom Style: {activeStyle.name}
                 </p>
               )}

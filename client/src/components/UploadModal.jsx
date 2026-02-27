@@ -99,7 +99,7 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete, sessionId })
 
         {/* Header */}
         <div className="p-5 border-b border-gray-100 dark:border-gray-800/60 flex justify-between items-center bg-white dark:bg-[#1c1e21] rounded-t-2xl">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+          <h2 className="font-heading tracking-tight text-xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
             <UploadCloud className="w-5 h-5 text-blue-600 dark:text-blue-400" /> Upload Files
           </h2>
           <button onClick={onClose} disabled={uploading} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition text-gray-500 dark:text-gray-400">
@@ -118,7 +118,7 @@ const UploadModal = ({ isOpen, onClose, folderId, onUploadComplete, sessionId })
                 <UploadCloud className="w-6 h-6 text-blue-500 dark:text-blue-400" />
               </div>
               <p className="text-sm font-semibold text-blue-900 dark:text-blue-300">Click to select files</p>
-              <p className="text-xs text-blue-600 dark:text-blue-400/80 mt-1 max-w-[200px] text-center">
+              <p className="font-mono text-[10px] uppercase font-bold tracking-wider text-blue-600 dark:text-blue-400/80 mt-1 max-w-[200px] text-center">
                 Supported: PDF, TXT, DOCX, XLSX, PNG, JPG
               </p>
               <input

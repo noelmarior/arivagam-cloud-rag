@@ -136,10 +136,10 @@ const Register = () => {
         <div className="w-full max-w-md space-y-8">
           <div className="text-center lg:text-left">
             <div className="flex items-center justify-center lg:justify-start gap-3 mb-6">
-              <img src="/logo_mel.png" alt="Arivagam Logo" className="w-12 h-12 object-contain" />
-              <span className="text-2xl font-bold text-gray-900 tracking-tight">ARIVAGAM</span>
+              <img src="/logo_mel.png" alt="Arivagam Logo" className="w-9 h-9 object-contain" />
+              <span className="font-heading uppercase text-3xl font-bold text-gray-900 tracking-wide">ARIVAGAM</span>
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Create Account</h2>
+            <h2 className="font-heading text-3xl font-bold text-gray-900 tracking-tight">Create Account</h2>
             <p className="text-gray-500 mt-2">Join us and start your journey</p>
           </div>
 
@@ -240,7 +240,7 @@ const Register = () => {
             Already have an account? <Link to="/login" className="text-black font-bold hover:underline ml-1">Sign in</Link>
           </p>
         </div>
-        <div className="mt-12 text-xs text-center text-gray-400">
+        <div className="font-mono mt-12 text-xs text-center text-gray-400 uppercase tracking-widest">
           &copy; {new Date().getFullYear()} Arivagam. All rights reserved.
         </div>
       </div>
@@ -249,7 +249,7 @@ const Register = () => {
         <img src={landingPageImg} alt="App Screenshot" className="absolute inset-0 w-full h-full object-cover opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 to-slate-900/80 z-10" />
         <div className="relative z-20 flex flex-col justify-center h-full text-white text-left w-full pl-8">
-          <h2 className="text-5xl font-bold leading-tight mb-6 tracking-tight">
+          <h2 className="font-heading text-5xl font-bold leading-tight mb-6 tracking-tight">
             This is where <br />serious learners <br />begin.
           </h2>
           <p className="text-xl text-blue-100 font-medium max-w-lg border-l-4 border-purple-400 pl-4">

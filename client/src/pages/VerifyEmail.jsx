@@ -33,14 +33,14 @@ const VerifyEmail = () => {
                 {status === 'loading' && (
                     <div className="flex flex-col items-center">
                         <Loader className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-                        <h2 className="text-xl font-semibold text-gray-800">{message}</h2>
+                        <h2 className="font-heading text-xl font-semibold text-gray-800">{message}</h2>
                     </div>
                 )}
 
                 {status === 'success' && (
                     <div className="flex flex-col items-center">
                         <CheckCircle className="w-12 h-12 text-green-500 mb-4" />
-                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Email Verified!</h2>
+                        <h2 className="font-heading text-xl font-semibold text-gray-800 mb-4">Email Verified!</h2>
                         <p className="text-gray-600 mb-6">{message}</p>
                         <Link
                             to="/register"
@@ -54,7 +54,7 @@ const VerifyEmail = () => {
                 {status === 'error' && (
                     <div className="flex flex-col items-center">
                         <XCircle className="w-12 h-12 text-red-500 mb-4" />
-                        <h2 className="text-xl font-semibold text-gray-800 mb-4">Verification Failed</h2>
+                        <h2 className="font-heading text-xl font-semibold text-gray-800 mb-4">Verification Failed</h2>
                         <p className="text-gray-600 mb-6">{message}</p>
                         <Link
                             to="/register"

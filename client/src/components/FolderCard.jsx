@@ -118,7 +118,7 @@ const FolderCard = ({
 
             {/* Size */}
             {!isEditing && !isGhost && item.type === 'file' && (
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wide font-medium">
+                <span className="font-mono text-[10px] text-gray-400 dark:text-gray-500 mt-1 uppercase tracking-wider font-semibold">
                     {item.size ? `${(item.size / 1024).toFixed(0)} KB` : 'PDF'}
                 </span>
             )}

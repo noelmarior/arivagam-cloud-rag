@@ -112,7 +112,7 @@ const SourceSelector = ({ isOpen, onClose, onStart, customLabel }) => {
         {/* Header */}
         <div className="p-6 border-b border-gray-100 dark:border-gray-800/60 flex justify-between items-center bg-white dark:bg-[#1c1e21] rounded-t-2xl">
           <div>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Select Sources</h2>
+            <h2 className="font-heading text-xl font-bold text-gray-800 dark:text-gray-100">Select Sources</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">Choose files to include in this session context.</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition">
@@ -168,7 +168,7 @@ const SourceSelector = ({ isOpen, onClose, onStart, customLabel }) => {
 
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${isSelected ? 'text-blue-800 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}>{file.fileName}</p>
-                      <p className="text-[10px] text-gray-400">
+                      <p className="font-mono text-[10px] font-semibold text-gray-400 tracking-wider">
                         {file.fileName.split('.').pop().toUpperCase()}
                       </p>
                     </div>
