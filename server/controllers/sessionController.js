@@ -179,6 +179,29 @@ exports.addSourcesToSession = async (req, res) => {
   }
 };
 
+// Clear Session Messages
+exports.clearSessionMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.auth.userId;
+
+    const session = await Session.findOneAndUpdate(
+      { _id: id, userId },
+      { messages: [] },
+      { new: true }
+    );
+
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    res.json({ message: "Chat cleared successfully", session });
+  } catch (error) {
+    console.error("Clear Session Error:", error);
+    res.status(500).json({ error: "Failed to clear chat" });
+  }
+};
+
 // 6. Delete Session
 exports.deleteSession = async (req, res) => {
   try {

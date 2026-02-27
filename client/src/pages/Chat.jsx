@@ -244,6 +244,48 @@ const Chat = () => {
     }
   };
 
+  // --- Header Menu Logic ---
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleClearChat = async () => {
+    if (!currentSession) return;
+    try {
+      await api.patch(`/sessions/${currentSession._id}/clear`);
+      setMessages([]);
+      setIsMenuOpen(false);
+    } catch (err) {
+      console.error("Clear Chat Error:", err);
+      toast.error("Failed to clear chat");
+    }
+  };
+
+  const handleArchiveChat = async () => {
+    if (!currentSession) return;
+    try {
+      const isCurrentlyArchived = currentSession.isArchived || false;
+      await api.patch(`/sessions/${currentSession._id}/archive`, { isArchived: !isCurrentlyArchived });
+      setIsMenuOpen(false);
+
+      setCurrentSession(prev => ({ ...prev, isArchived: !isCurrentlyArchived }));
+
+      if (refreshSessions) refreshSessions();
+    } catch (err) {
+      console.error("Archive Chat Error:", err);
+      toast.error("Failed to update archive status");
+    }
+  };
+
   if (analyzing) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-white dark:bg-[#15171e]">
@@ -312,10 +354,39 @@ const Chat = () => {
 
       {/* --- RIGHT PANEL: CHAT --- */}
       <div className="flex-1 flex flex-col relative bg-white dark:bg-[#15171e]">
-        <div className="h-16 border-b border-gray-100 dark:border-gray-800/60 flex items-center px-6 bg-white dark:bg-[#1c1e21] sticky top-0 z-10 shadow-sm">
+        <div className="h-16 border-b border-gray-100 dark:border-gray-800/60 flex justify-between items-center px-6 bg-white dark:bg-[#1c1e21] sticky top-0 z-10 shadow-sm">
           <h1 className="font-bold text-gray-800 dark:text-gray-100 text-lg">
             {currentSession ? currentSession.name : "Study Session"}
           </h1>
+
+          {/* Header Dropdown Menu */}
+          {currentSession && (
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-[#1c1e21] border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                  <button
+                    onClick={handleClearChat}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  >
+                    Clear Chat
+                  </button>
+                  <button
+                    onClick={handleArchiveChat}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  >
+                    {currentSession.isArchived ? "Unarchive Chat" : "Archive Chat"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
 

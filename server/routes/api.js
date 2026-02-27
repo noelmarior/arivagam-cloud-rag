@@ -129,6 +129,9 @@ router.post('/sessions/:id/sources', protect, sessionController.addSourcesToSess
 // Delete session explicitly
 router.delete('/sessions/:id', protect, sessionController.deleteSession);
 
+// Clear session messages explicitly
+router.patch('/sessions/:id/clear', protect, sessionController.clearSessionMessages);
+
 
 // 4. Folders
 
