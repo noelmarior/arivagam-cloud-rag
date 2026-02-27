@@ -14,6 +14,11 @@ const FileSchema = new mongoose.Schema({
   summary: { type: String }, // AI Summary
   pineconeId: { type: String }, // Link to Vector DB
 
+  // --- PROCESSING STATE ---
+  status: { type: String, enum: ['processing', 'completed', 'failed'], default: 'processing' },
+  isTruncated: { type: Boolean, default: false },
+  errorMessage: { type: String, default: null },
+
   // --- RELATIONSHIPS ---
   userId: { type: String, required: true, index: true },
 

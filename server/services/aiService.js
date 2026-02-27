@@ -21,6 +21,37 @@ exports.generateEmbedding = async (text) => {
   }
 };
 
+// 1.5 Generate Batch Embeddings (Array of Vectors)
+exports.generateBatchEmbeddings = async (chunks) => {
+  console.log(`[AI SERVICE] Batch embedding ${chunks.length} chunks...`);
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+
+    // The Gemini SDK allows batch embedding via embedContent with batch wrapper
+    // See: https://ai.google.dev/api/rest/v1beta/models/batchEmbedContents
+    const requests = chunks.map(chunk => ({
+      content: { parts: [{ text: chunk.replace(/\0/g, '').trim().substring(0, 9000) }] }
+    }));
+
+    const result = await model.batchEmbedContents({
+      requests
+    });
+
+    // Extract the values arrays from the response objects
+    const vectors = result.embeddings.map(e => e.values);
+
+    if (!vectors || vectors.length !== chunks.length) {
+      console.warn(`[AI SERVICE] Warning: Expected ${chunks.length} embeddings, got ${vectors?.length || 0}`);
+    }
+
+    return vectors;
+
+  } catch (error) {
+    console.error("Gemini Batch Embedding Error:", error.message);
+    throw new Error(`Failed to generate batch embeddings: ${error.message}`);
+  }
+};
+
 // 2. Generate Summary
 // Model: gemini-2.5-flash (Fast & Free)
 exports.generateSummary = async (text) => {

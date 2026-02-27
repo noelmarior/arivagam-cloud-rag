@@ -30,8 +30,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    // 1. Clear all local data
+    // 1. Clear all local data EXCEPT theme
+    const currentTheme = localStorage.getItem('theme');
     localStorage.clear();
+    if (currentTheme) localStorage.setItem('theme', currentTheme);
     sessionStorage.clear();
 
     // 2. Clear sensitive variables from memory

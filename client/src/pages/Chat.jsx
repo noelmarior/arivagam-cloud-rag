@@ -211,7 +211,7 @@ const Chat = () => {
     if (!text) return null;
     return text.split(/(\*\*.*?\*\*)/g).map((part, index) =>
       part.startsWith('**') && part.endsWith('**')
-        ? <strong key={index} className="font-bold text-blue-900">{part.slice(2, -2)}</strong>
+        ? <strong key={index} className="font-bold text-blue-900 dark:text-[#8AB4F8]">{part.slice(2, -2)}</strong>
         : part
     );
   };
@@ -407,7 +407,7 @@ const Chat = () => {
                 onContextMenu={(e) => msg.role === 'assistant' && handleContextMenu(e, msg)}
                 className={`max-w-3xl p-5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
                   ? 'bg-gray-900 dark:bg-blue-600 text-white rounded-br-none prose prose-invert prose-sm'
-                  : 'bg-gray-50 dark:bg-[#1c1e21] border border-gray-200 dark:border-gray-800/60 text-gray-800 dark:text-gray-200 rounded-bl-none prose prose-sm dark:prose-invert'
+                  : 'bg-gray-50 dark:bg-[#1c1e21] border border-gray-200 dark:border-gray-800/60 text-gray-800 dark:text-gray-200 rounded-bl-none prose prose-sm dark:prose-invert prose-strong:text-blue-900 dark:prose-strong:text-[#8AB4F8]'
                   }`}
               >
                 {msg.isTemp ? (

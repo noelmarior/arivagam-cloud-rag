@@ -22,12 +22,38 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const chunkText = (text, size = 1000) => {
-  const chunks = [];
-  for (let i = 0; i < text.length; i += size) {
-    chunks.push(text.slice(i, i + size));
+const chunkTextWithQuota = (text, maxChunkSize = 1000) => {
+  const charsPerToken = 4;
+  const tokenLimit = 25000;
+  const charLimit = tokenLimit * charsPerToken; // 100,000 chars safely
+
+  let isTruncated = false;
+  let textToProcess = text;
+
+  if (text.length > charLimit) {
+    textToProcess = text.substring(0, charLimit);
+    isTruncated = true;
+    console.warn(`[QUOTA] Text truncated at ${charLimit} chars. Original: ${text.length}`);
   }
-  return chunks;
+
+  const chunks = [];
+  let currentIndex = 0;
+
+  while (currentIndex < textToProcess.length) {
+    let nextIndex = currentIndex + maxChunkSize;
+
+    if (nextIndex < textToProcess.length) {
+      let lastSpaceIndex = textToProcess.lastIndexOf(' ', nextIndex);
+      if (lastSpaceIndex > currentIndex) {
+        nextIndex = lastSpaceIndex;
+      }
+    }
+
+    chunks.push(textToProcess.substring(currentIndex, nextIndex).trim());
+    currentIndex = nextIndex + 1;
+  }
+
+  return { safeChunks: chunks, isTruncated };
 };
 
 const extractText = async (file) => {
@@ -116,94 +142,164 @@ const extractText = async (file) => {
   throw new Error('Unsupported file type. Allowed: .txt, .pdf, .docx, .xlsx, images');
 };
 
-// 1. Upload File
+// 1. Upload File (Async Background Pipeline)
 exports.uploadFile = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: "No file uploaded or missing memory buffer" });
+    }
 
-    console.log("Full Request Body:", req.body);
-    const sessionId = req.body.sessionId || req.query.sessionId;
-    let { folderId } = req.body;
-    if (!folderId || folderId === 'root' || folderId === 'null') folderId = null;
+    const sessionId = req.body.sessionId || req.query.sessionId || null;
+    let folderId = req.body.folderId === 'root' || req.body.folderId === 'null' ? null : req.body.folderId;
 
-    console.log(`📄 Processing: ${req.file.originalname} (${req.file.mimetype}) for Session: ${sessionId}`);
-    console.log(`🔗 Cloudinary URL: ${req.file.path}`);
-
+    // A. Text Extraction (Happens instantly via RAM buffer)
     const content = await extractText(req.file);
 
     if (!content || content.trim().length === 0) {
-      throw new Error("Extracted text is empty. Cannot process empty file.");
-    }
-    console.log(`✅ Extracted ${content.length} characters.`);
-
-    let summary = "";
-    try {
-      summary = await aiService.generateSummary(content);
-    } catch (aiError) {
-      console.warn("Summary generation failed:", aiError.message);
-      summary = "Summary unavailable.";
+      throw new Error("Extracted text is empty. Cannot process.");
     }
 
+    // B. Space-Aware Quota Chunker
+    const { safeChunks, isTruncated } = chunkTextWithQuota(content, 1000);
+
+    // C. Initial Database Save
     const fileId = new mongoose.Types.ObjectId();
     const newFile = new File({
       _id: fileId,
       fileName: req.file.originalname,
       fileType: req.file.mimetype,
       size: req.file.size,
-      content,
-      summary,
       userId: req.auth.userId,
       folderId,
-      originalPath: req.file.path,
-      viewablePath: req.file.path,
-      publicId: req.file.filename,
       pineconeId: fileId.toString(),
-      sessionId: sessionId || null
+      sessionId: sessionId,
+      status: 'processing',
+      isTruncated: isTruncated,
+      errorMessage: null,
+      originalPath: "processing", // Placeholder until Cloudinary finishes
+      viewablePath: "processing"
     });
 
-    const chunks = chunkText(content, 1000);
-    const vectorsToUpsert = [];
-
-    console.log(`🧩 Chunking content into ${chunks.length} parts...`);
-
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      try {
-        const embedding = await aiService.generateEmbedding(chunk);
-        if (embedding && embedding.length > 0 && !embedding.every(n => n === 0)) {
-          vectorsToUpsert.push({
-            id: `${fileId}_${i}`,
-            values: embedding,
-            metadata: {
-              text: chunk,
-              fileId: fileId.toString(),
-              sessionId: sessionId,
-              fileName: req.file.originalname,
-              chunkIndex: i,
-              userId: req.auth.userId,
-              folderId: folderId || ""
-            }
-          });
-        }
-      } catch (e) {
-        console.error(`❌ Failed to embed chunk ${i}:`, e.message);
-      }
-    }
-
-    if (vectorsToUpsert.length > 0) {
-      await vectorService.upsertBatch(vectorsToUpsert);
-      console.log(`✅ Successfully upserted ${vectorsToUpsert.length} vector chunks.`);
-    } else {
-      console.warn("⚠️ No valid vectors generated. Skipping Pinecone upsert.");
-    }
-
     await newFile.save();
-    console.log("✅ File saved to MongoDB.");
-    res.status(200).json({ message: 'File processed', file: newFile });
 
-  } catch (error) {
-    console.error("❌ Upload Error:", error.message);
-    res.status(500).json({ error: error.message });
+    // D. Instant Client Release 
+    res.status(202).json({
+      message: 'File received and processing initiated',
+      fileId: newFile._id,
+      status: newFile.status,
+      isTruncated: newFile.isTruncated
+    });
+
+    // =====================================================================
+    // 3. BACKGROUND ASYNC PIPELINE
+    // =====================================================================
+    (async () => {
+      let cloudinaryPublicId = null;
+
+      try {
+        console.log(`[BACKGROUND] Processing ${fileId}`);
+        const textForSummarizer = safeChunks.join(" ");
+
+        const uploadToCloudinary = () => {
+          return new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+              { resource_type: "auto", folder: "arivagam_uploads" },
+              (error, result) => {
+                if (error) reject(error);
+                else {
+                  cloudinaryPublicId = result.public_id;
+                  resolve(result);
+                }
+              }
+            );
+            uploadStream.end(req.file.buffer);
+          });
+        };
+
+        const results = await Promise.allSettled([
+          uploadToCloudinary(),
+          aiService.generateSummary(textForSummarizer),
+          aiService.generateBatchEmbeddings(safeChunks)
+        ]);
+
+        const failedTasks = results.filter(r => r.status === 'rejected');
+        if (failedTasks.length > 0) {
+          throw new Error(failedTasks[0].reason?.message || "AI or Upload task failed");
+        }
+
+        const uploadedAsset = results[0].value;
+        const summary = results[1].value;
+        const embeddingsBatch = results[2].value;
+
+        const vectorsToUpsert = [];
+        for (let i = 0; i < embeddingsBatch.length; i++) {
+          const embedding = embeddingsBatch[i];
+          if (embedding && embedding.length > 0 && !embedding.every(n => n === 0)) {
+            vectorsToUpsert.push({
+              id: `${fileId}_${i}`,
+              values: embedding,
+              metadata: {
+                text: safeChunks[i],
+                fileId: fileId.toString(),
+                sessionId: sessionId || "",
+                fileName: req.file.originalname,
+                chunkIndex: i,
+                userId: req.auth.userId,
+                folderId: folderId || ""
+              }
+            });
+          }
+        }
+
+        if (vectorsToUpsert.length > 0) {
+          await vectorService.upsertBatch(vectorsToUpsert);
+          console.log(`✅ Upserted ${vectorsToUpsert.length} vectors for ${fileId}`);
+        }
+
+        await File.findByIdAndUpdate(fileId, {
+          content: content,
+          summary: summary,
+          originalPath: uploadedAsset.secure_url,
+          viewablePath: uploadedAsset.secure_url,
+          publicId: uploadedAsset.public_id,
+          status: 'completed'
+        });
+
+        console.log(`[BACKGROUND END] Success for ${fileId}`);
+
+      } catch (backgroundError) {
+        console.error(`[BACKGROUND FATAL] Process failed for ${fileId}:`, backgroundError.message);
+
+        if (cloudinaryPublicId) {
+          cloudinary.uploader.destroy(cloudinaryPublicId)
+            .catch(e => console.error("Cloud cleanup failed:", e.message));
+        }
+
+        vectorService.deleteVector?.(fileId.toString())
+          .catch(e => console.error("Pinecone cleanup failed:", e.message));
+
+        File.findByIdAndUpdate(fileId, {
+          status: 'failed',
+          errorMessage: backgroundError.message
+        }).catch(e => console.error("MongoDB status update failed:", e.message));
+      }
+    })();
+
+  } catch (syncError) {
+    console.error("❌ Blocking Upload Error:", syncError.message);
+    res.status(500).json({ error: syncError.message });
+  }
+};
+
+// 1.5 Get File Status (Polling endpoint)
+exports.getFileStatus = async (req, res) => {
+  try {
+    const file = await File.findOne({ _id: req.params.id, userId: req.auth.userId })
+      .select('status errorMessage fileName isTruncated');
+    if (!file) return res.status(404).json({ error: 'File not found' });
+    res.json(file);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
@@ -211,7 +307,22 @@ exports.uploadFile = async (req, res) => {
 exports.getAllFiles = async (req, res) => {
   try {
     const files = await File.find({ userId: req.auth.userId })
-      .select('fileName summary createdAt fileType originalPath viewablePath');
+      .select('fileName summary createdAt fileType originalPath viewablePath status errorMessage');
+
+    // --- AUTO-CORRECT STUCK PROCESSING FILES ---
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+    for (let file of files) {
+      if (file.status === 'processing' && file.createdAt < tenMinutesAgo) {
+        file.status = file.summary ? 'completed' : 'failed';
+        file.errorMessage = file.summary ? null : 'Processing timed out. Please delete and re-upload.';
+
+        await File.updateOne(
+          { _id: file._id },
+          { $set: { status: file.status, errorMessage: file.errorMessage } }
+        );
+      }
+    }
     res.json(files);
   } catch (err) {
     res.status(500).json({ error: err.message });

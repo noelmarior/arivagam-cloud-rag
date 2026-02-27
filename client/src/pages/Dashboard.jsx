@@ -93,6 +93,36 @@ export default function Dashboard() {
     fetchContents();
   }, [folderId]);
 
+  // --- 1.5. Polling Logic for Processing Files ---
+  useEffect(() => {
+    const processingFiles = data.files.filter(f => f.status === 'processing');
+    if (processingFiles.length === 0) return;
+
+    const intervalId = setInterval(async () => {
+      let needsRefresh = false;
+
+      for (const file of processingFiles) {
+        try {
+          const res = await api.get(`/files/${file._id}/status`);
+          if (res.data.status !== 'processing') {
+            needsRefresh = true;
+            if (res.data.status === 'failed') {
+              toast.error(res.data.errorMessage || `Failed to process ${file.fileName}`);
+            }
+          }
+        } catch (err) {
+          console.error("Polling error for", file.fileName, err);
+        }
+      }
+
+      if (needsRefresh) {
+        refreshData();
+      }
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [data.files, folderId]);
+
   // --- 2. Search Logic ---
   useEffect(() => {
     const performSearch = async () => {
@@ -580,6 +610,24 @@ export default function Dashboard() {
     refreshData();
   };
 
+  const handleOptimisticUpload = (file) => {
+    // Generate a temporary ID so it renders right away
+    const tempId = 'temp-' + Date.now() + '-' + file.name;
+    const newFile = {
+      _id: tempId,
+      fileName: file.name,
+      type: 'file',
+      status: 'processing',
+      size: file.size,
+      isOptimistic: true
+    };
+
+    setData(prev => ({
+      ...prev,
+      files: [...prev.files, newFile]
+    }));
+  };
+
   if (loading && !searchResults) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -899,6 +947,7 @@ export default function Dashboard() {
         onClose={() => setIsUploadOpen(false)}
         folderId={folderId}
         onUploadComplete={handleUploadComplete}
+        onOptimisticUpload={handleOptimisticUpload}
         sessionId={activeSessionId} // Pass Global Session ID
       />
 

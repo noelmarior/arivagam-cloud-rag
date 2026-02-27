@@ -1,5 +1,5 @@
 import React from 'react';
-import { Folder } from 'lucide-react';
+import { Folder, Loader2 } from 'lucide-react';
 import { getFileTheme } from '../utils/themeHelper';
 
 const FolderCard = ({
@@ -35,6 +35,10 @@ const FolderCard = ({
             return <Folder className={`w-7 h-7 ${active ? 'text-blue-700' : 'text-blue-500'}`} />;
         }
 
+        if (item.status === 'processing') {
+            return <Loader2 className="w-7 h-7 text-orange-500 animate-spin" />;
+        }
+
         // Use Theme Icon
         const Icon = theme.Icon;
         const colorClass = active ? theme.text.replace('600', '700') : theme.text;
@@ -44,6 +48,7 @@ const FolderCard = ({
 
     // Dynamic Border/BG Logic based on type
     const getCardStyles = () => {
+        if (item.status === 'processing') return 'bg-gray-50 border-gray-200 opacity-60 cursor-not-allowed dark:bg-gray-800/40 dark:border-gray-700/50';
         if (active) return 'bg-blue-50 border-blue-500 shadow-md ring-1 ring-blue-500 dark:bg-blue-500/20 dark:border-blue-500/50 dark:ring-blue-500/50';
 
         // Base styles
@@ -55,10 +60,10 @@ const FolderCard = ({
     return (
         <div
             {...props}
-            onClick={!isGhost ? onClick : undefined}
-            onDoubleClick={!isGhost ? onDoubleClick : undefined}
-            onContextMenu={!isGhost ? onContextMenu : undefined}
-            draggable={item.type === 'file' && !isGhost}
+            onClick={(!isGhost && item.status !== 'processing') ? onClick : undefined}
+            onDoubleClick={(!isGhost && item.status !== 'processing') ? onDoubleClick : undefined}
+            onContextMenu={(!isGhost && item.status !== 'processing') ? onContextMenu : undefined}
+            draggable={item.type === 'file' && !isGhost && item.status !== 'processing'}
             onDragStart={!isGhost ? onDragStart : undefined}
             onDragOver={!isGhost && item.type === 'folder' ? onDragOver : undefined}
             onDragLeave={!isGhost && item.type === 'folder' ? onDragLeave : undefined}

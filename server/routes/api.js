@@ -21,36 +21,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// Configure Storage Engine
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    // 1. Initialize logic variables
-    let resourceType = 'auto'; // Default: let Cloudinary decide
-
-    // 2. FORCE "raw" for specific non-image types
-    // Cloudinary sometimes fails to "auto-detect" these correctly from Multer
-    if (file.mimetype === 'text/plain' ||                // .txt
-      file.mimetype === 'application/pdf' ||             // .pdf  
-      file.mimetype.includes('msword') ||              // .doc
-      file.mimetype.includes('wordprocessingml') ||    // .docx
-      file.mimetype.includes('spreadsheet') ||         // .xlsx
-      file.mimetype.includes('presentation')) {        // .pptx
-      resourceType = 'raw';
-    }
-
-    return {
-      folder: 'arivagam_uploads',
-      resource_type: resourceType,
-      // 3. CRITICAL: We REMOVED 'allowed_formats'. 
-      // Why? Because the library validates 'txt' against IMAGE formats and crashes.
-      // We accept the file here, and let your Controller handle the logic.
-      public_id: file.originalname.split('.')[0] + '-' + Date.now()
-    };
-  },
-});
-
-const upload = multer({ storage: storage });
+// --- MULTER SETUP (Memory Storage for Async Upload) ---
+const upload = multer({ storage: multer.memoryStorage() });
 
 // --- MIDDLEWARE ---
 const requireAuth = require('../middleware/requireAuth');
@@ -92,6 +64,7 @@ router.post('/upload', protect, (req, res, next) => {
 }, fileController.uploadFile);
 router.get('/files', protect, fileController.getAllFiles);
 router.get('/files/search', protect, fileController.searchFiles);
+router.get('/files/:id/status', protect, fileController.getFileStatus); // Polling endpoint
 router.get('/files/:id', protect, fileController.getFileById);
 router.put('/files/:id', protect, fileController.updateFile); // ✅ Keep only this PUT route
 router.delete('/files/:id', protect, fileController.deleteFile);
