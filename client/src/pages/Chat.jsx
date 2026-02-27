@@ -246,10 +246,10 @@ const Chat = () => {
 
   if (analyzing) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center bg-white">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-gray-800">Analyzing Sources...</h2>
-        <p className="text-gray-500 mt-2">Generating study plan and summary</p>
+      <div className="flex h-screen flex-col items-center justify-center bg-white dark:bg-[#15171e]">
+        <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-500 animate-spin mb-4" />
+        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Analyzing Sources...</h2>
+        <p className="text-gray-500 dark:text-gray-400 mt-2">Generating study plan and summary</p>
       </div>
     );
   }
