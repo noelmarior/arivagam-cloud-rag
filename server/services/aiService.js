@@ -144,15 +144,15 @@ exports.generateResponse = async (userMessage, contextText, lengthInstruction) =
            "I cannot find information about this topic in the provided sources. Please ask something related to your materials."
          - Do NOT attempt to answer off-topic questions.
 
-      2. **HYBRID ANSWERING (The Gap-Filling Rule)**:
-         - If the question IS relevant, check the volume of information available in the sources.
-         - **Scenario A (Sufficient Info):** If the sources have enough detail to meet the TARGET LENGTH, use ONLY the sources.
-         - **Scenario B (Insufficient Info):** If the sources mention the topic but are too brief (e.g., source has 30 words, target is 120 words), you MUST **fill the gap** using your own general knowledge.
-         - **Crucial:** Blend the source info and your knowledge seamlessly. Do not say "I am adding this..." or "The source is short." Just write a cohesive, high-quality answer.
+      2. **VERBATIM EXTRACTION & HYBRID ANSWERING**:
+         - **Crucial Requirement:** When you use facts, concepts, or sentences from the SOURCE MATERIALS, you MUST extract them VERBATIM (word-for-word exactly as they appear in the source).
+         - Do NOT paraphrase the source material.
+         - If the verbatim source facts are too brief to meet the TARGET LENGTH, you must **fill the gap** using your own general knowledge.
+         - Use your own knowledge ONLY as connective tissue or supplementary context to seamlessly connect the verbatim facts into a cohesive answer.
       
-      3. **FORMATTING**:
-         - Use **bold** for key terms.
-         - Use bullet points for lists.
+      3. **FORMATTING - CRITICAL**:
+         - Do NOT use ANY markdown formatting. No bolding (**), no italics (*), no markdown links, no lists. 
+         - Output ONLY plain text sentences.
          - Adhere strictly to the TARGET LENGTH.
     `;
 

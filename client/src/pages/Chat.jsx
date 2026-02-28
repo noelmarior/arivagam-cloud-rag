@@ -209,11 +209,24 @@ const Chat = () => {
 
   const renderContent = (text) => {
     if (!text) return null;
-    return text.split(/(\*\*.*?\*\*)/g).map((part, index) =>
-      part.startsWith('**') && part.endsWith('**')
-        ? <strong key={index} className="font-bold text-blue-900 dark:text-[#8AB4F8]">{part.slice(2, -2)}</strong>
-        : part
-    );
+
+    // First, split by **
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index} className="font-bold text-blue-900 dark:text-[#8AB4F8]">{part.slice(2, -2)}</strong>;
+      }
+
+      // For non-bold parts, split by <u>
+      const uParts = part.split(/(<u>.*?<\/u>)/g);
+      return uParts.map((uPart, uIndex) => {
+        if (uPart.startsWith('<u>') && uPart.endsWith('</u>')) {
+          return <span key={`${index}-${uIndex}`} className="text-blue-900 dark:text-[#8AB4F8] font-bold">{uPart.slice(3, -4)}</span>;
+        }
+        return <span key={`${index}-${uIndex}`}>{uPart}</span>;
+      });
+    });
   };
 
   const handleContextMenu = (e) => {

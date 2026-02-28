@@ -122,11 +122,15 @@ exports.sendMessage = async (req, res) => {
     const finalInstruction = styleInstruction || "Keep it concise and direct (approx 2 sentences).";
 
     // D. Call AI
-    const aiResponseText = await aiService.generateResponse(message, contextData, finalInstruction);
+    const rawAiResponseText = await aiService.generateResponse(message, contextData, finalInstruction);
+
+    // D.5 Process Response through Text Matcher
+    const { highlightSourceMatches } = require('../utils/textMatcher');
+    const highlightedAiResponse = highlightSourceMatches(rawAiResponseText, contextData, 5);
 
     // E. Save & Return
     const newMessage = { role: 'user', content: message };
-    const aiMessage = { role: 'assistant', content: aiResponseText };
+    const aiMessage = { role: 'assistant', content: highlightedAiResponse };
 
     session.messages.push(newMessage, aiMessage);
     session.lastActive = Date.now();
