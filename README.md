@@ -82,104 +82,65 @@ Arivagam utilizes a fully independent, custom **JWT (JSON Web Token)** authentic
 
 ### Authentication Flow Blueprint
 
-```text
-       [ USER REGISTRATION ]
-                 |
-                 v
-+-----------------------------------+
-| 1. Password Regex Validation      |
-| 2. Argon2id Cryptographic Hashing |
-| 3. Generate SHA-256 Token         |
-+-----------------------------------+
-                 |
-                 v
-+-----------------------------------+
-| Send Verification Email via       |
-| Gmail OAuth2 HTTP API             |
-+-----------------------------------+
-                 |
-                 v
-       [ USER Clicks Link ]
-       (Token verified, DB updated)
+```mermaid
+flowchart TD
+    %% User Registration
+    subgraph Registration [User Registration]
+        R1([User Registrations]) --> R2[Password Regex Validation]
+        R2 --> R3[Argon2id Cryptographic Hashing]
+        R3 --> R4[Generate SHA-256 Token]
+        R4 --> R5[Send Email via Gmail OAuth2]
+        R5 --> R6([User Clicks Verification Link])
+        R6 --> R7[(DB: User Verified)]
+    end
 
-=========================================================================
-
-          [ USER LOGIN ]
-                 |
-                 v
-+-----------------------------------+
-| Verify Password Hash (Argon2id)   |
-| (Opportunistic upgrade if bcrypt) |
-+-----------------------------------+
-                 |
-                 v
-+---------------------------------------+
-| 1. Generate Signed JWT                |
-| 2. Inject into secure, httpOnly,      |
-|    sameSite='none' Cookie             |
-+---------------------------------------+
-                 |
-                 v
-      [ PROTECTED API ROUTES ]
-+---------------------------------------+
-| `requireAuth` Middleware intercepts   |
-| Cookie, decodes JWT, validates User   |
-+---------------------------------------+
+    %% User Login
+    subgraph Authentication [User Login & Authorization]
+        A1([User Logs In]) --> A2{Verify Hash}
+        A2 -->|Bcrypt Match| A3[Opportunistic Upgrade to Argon2id]
+        A2 -->|Argon2id Match| A4[Generate Signed JWT]
+        A3 --> A4
+        A4 --> A5[Inject JWT into secure, httpOnly Cookie]
+        A5 --> A6([Client Request to Protected Route])
+        A6 --> A7{requireAuth Middleware}
+        A7 -->|Valid| A8([Access Granted])
+        A7 -->|Invalid| A9([401 Unauthorized])
+    end
 ```
 
 ## 🗺 System Architecture Blueprint
-       [ USER UPLOAD ]
-             |
-             v
-+-----------------------------------+
-|   Node.js / Express API Gateway   |
-|   (multer.memoryStorage)          |
-+-----------------------------------+
- | 1. Instant 202 Accepted Client Release
- +-----------------------------------------> [ CLIENT UI: Optimistic Loading ]
- |
- | 2. Promise.allSettled() Background Task Execution
- v
-+-----------------------------------------------------------------------+
-|                       PARALLEL WORKER THREADS                         |
-|                                                                       |
-|  +--------------------+   +--------------------+   +---------------+  |
-|  |  Storage Worker    |   | Embedding Worker   |   | Summary Worker|  |
-|  |  (Cloudinary Blob) |   | (Pinecone Vector)  |   | (Gemini LLM)  |  |
-|  +--------------------+   +--------------------+   +---------------+  |
-+-----------------------------------------------------------------------+
-                               |
-                               v
-                       [ 3. Sync & Validate ] 
-         (Did any API throttle? Did a 3rd party service timeout?)
-                               |
-            +------------------+------------------+
-            |                                     |
-    [ SUCCESS STATE ]                     [ FAILSAFE TRIGGERED ]
-    Commit DB Records                 Initiate Automated Rollback:
-    Push Event to Client              1. Delete orphaned Cloudinary Blobs
-                                      2. Wipe stale Pinecone Vectors
-                                      3. Drop pending DB entry
-                                      4. Notify Client of partial failure
 
-=========================================================================
+```mermaid
+flowchart TD
+    %% Upload Pipeline
+    subgraph Upload [Upload & Ingestion Pipeline]
+        U1([User Uploads File]) --> U2[Node.js API Gateway<br/>multer.memoryStorage]
+        U2 -->|1. 202 Accepted| U3([Client UI: Optimistic Loading])
+        
+        U2 -->|2. Promise.allSettled| W_Split((Parallel Execution))
+        
+        W_Split --> W1[Storage Worker<br/>Cloudinary]
+        W_Split --> W2[Embedding Worker<br/>Pinecone Vectors]
+        W_Split --> W3[Summary Worker<br/>Gemini LLM]
+        
+        W1 & W2 & W3 --> V{3. Sync & Validate<br/>Any Throttles?}
+        
+        V -->|All Success| S1[Commit DB & Push Event]
+        V -->|Any Failure| F1[Automated Rollback]
+        
+        F1 -.-> R1[Delete Orphaned Blobs]
+        F1 -.-> R2[Wipe Stale Vectors]
+        F1 -.-> R3[Drop Pending DB Entry]
+        F1 -.-> R4[Notify Client of Failure]
+    end
 
-       [ CHAT QUERY ]
-             |
-             v
-+-------------------------------+       +-------------------------------+
-|  Pinecone Context Retrieval   | ----> |   LLM Synthesis (Gemini)      |
-+-------------------------------+       +-------------------------------+
-                                                       |
-                                                       v
-                                        +-------------------------------+
-                                        |  Verbatim Extraction Engine   |
-                                        |  (Server-Side N-Gram Diffing) |
-                                        +-------------------------------+
-                                                       |
-                                                       v
-                                        [ VALIDATED DETERMINISTIC CITATION ]
-                                        (Sent to Client)
+    %% Chat Pipeline
+    subgraph Chat [RAG Chat Pipeline]
+        C1([User Chat Query]) --> C2[Pinecone Context Retrieval]
+        C2 --> C3[LLM Synthesis<br/>Gemini]
+        C3 --> C4[Verbatim Extraction Engine<br/>Server-Side N-Gram Diffing]
+        C4 --> C5([Validated Deterministic Citation<br/>Sent to Client])
+    end
 ```
 
 > **[🖼️ VISUAL WALKTHROUGH PLACEHOLDER 2: DASHBOARD / UPLOAD FLOW]**
