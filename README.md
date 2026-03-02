@@ -13,10 +13,11 @@ We completely abandon stochastic LLM JSON-formatting and fragile prompt-engineer
 
 ---
 
-> **[🖼️ VISUAL WALKTHROUGH PLACEHOLDER 1: HERO / LANDING PAGE]**
-> *(Please take a high-quality screenshot of the Landing/Hero section and insert it here)*
-> `![Landing Page Screenshot](./assets/landing.png)`
+> **[🖼️ VISUAL WALKTHROUGH: HERO / LANDING PAGE]**
 
+<p align="center">
+  <img src="demo-pics/landingpage.png" width="100%" alt="Landing Page" />
+</p>
 ---
 
 ## 🛠 Tech Stack & Environment
@@ -143,9 +144,12 @@ flowchart TD
     end
 ```
 
-> **[🖼️ VISUAL WALKTHROUGH PLACEHOLDER 2: DASHBOARD / UPLOAD FLOW]**
-> *(Please take a high-quality screenshot of the Dashboard showing Optimistic Uploads in action and insert it here)*
-> `![Dashboard Screenshot](./assets/dashboard.png)`
+> **[🖼️ VISUAL WALKTHROUGH: DASHBOARD / UPLOAD FLOW]**
+
+<p align="center">
+  <img src="demo-pics/dashboard.png" width="49%" alt="Dashboard" />
+  <img src="demo-pics/upload.png" width="49%" alt="Upload Flow" />
+</p>
 
 ---
 
@@ -154,9 +158,12 @@ flowchart TD
 2. **Strict HTTP-Only Cookies:** *Crucially*, the JWT is never sent to the client's Javascript scope. It is injected directly into a `secure`, `sameSite: 'none'`, `httpOnly` cookie. This strictly mathematically mitigates **XSS (Cross-Site Scripting)** attacks because malicious client-side JS simply cannot read the token.
 3. **Opportunistic Password Hashing:** By owning the Auth layer, we gained the exact control needed to implement a seamless migration path for dynamic security standards. If a legacy user logs in with an old `bcrypt` hash, the system authenticates them and automatically upgrades their database record to the modern `argon2id` standard in the background without interrupting the user experience.
 
-> **[🖼️ VISUAL WALKTHROUGH PLACEHOLDER 3: REGISTRATION & AUTHENTICATION]**
-> *(Please take a screenshot of the Login or Registration UI, perhaps showing the Email Verification flow, and insert it here)*
-> `![Auth Screenshot](./assets/auth.png)`
+> **[🖼️ VISUAL WALKTHROUGH: REGISTRATION & AUTHENTICATION]**
+
+<p align="center">
+  <img src="demo-pics/register.png" width="49%" alt="Registration" />
+  <img src="demo-pics/reg_auth.png" width="49%" alt="Registration Authentication" />
+</p>
 
 ---
 
@@ -170,9 +177,11 @@ flowchart TD
 - **Opportunistic Password Hashing:** A seamless migration path for dynamic security standards. If a user logs in with a legacy `bcrypt` hash, the system authenticates them and automatically upgrades their database record to the modern `argon2id` standard in the background without interrupting the user experience.
 - **Dynamic API Rate Limit Recovery:** What happens when an LLM API hard-limits during a demo? The Hybrid Logic Engine calculates exactly when heavily-throttled free-tier APIs (like Gemini) will reset relative to the server's local timezone (IST), reporting an exact "Try again in X hours Y mins" metric to the end user instead of crashing with a generic `500 Internal Server Error`.
 
-> **[🖼️ VISUAL WALKTHROUGH PLACEHOLDER 4: CHAT VIEW & HIGHLIGHTED CITATIONS]**
-> *(Please take a screenshot of the Chat interface showing the highlighted N-gram extracted citations and insert it here)*
-> `![Chat Screenshot](./assets/chat.png)`
+> **[🖼️ VISUAL WALKTHROUGH: CHAT VIEW & HIGHLIGHTED CITATIONS]**
+
+<p align="center">
+  <img src="demo-pics/chat.png" width="100%" alt="Chat View" />
+</p>
 
 ---
 
@@ -199,9 +208,12 @@ This required extreme calculated compromises to keep the system stable during de
 
 ---
 
-> **[🖼️ VISUAL WALKTHROUGH PLACEHOLDER 5: ARCHIVE & SEARCH]**
-> *(Please take a screenshot of the Archive or Search functionality to show state management in action and insert it here)*
-> `![Archive/Search Screenshot](./assets/archive.png)`
+> **[🖼️ VISUAL WALKTHROUGH: ARCHIVE & SEARCH]**
+
+<p align="center">
+  <img src="demo-pics/search.png" width="49%" alt="Search" />
+  <img src="demo-pics/archive.png" width="49%" alt="Archive" />
+</p>
 
 ---
 
