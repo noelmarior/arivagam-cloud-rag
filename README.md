@@ -147,8 +147,8 @@ flowchart TD
 > **[🖼️ VISUAL WALKTHROUGH: DASHBOARD / UPLOAD FLOW]**
 
 <p align="center">
-  <img src="demo-pics/dashboard.png" width="49%" alt="Dashboard" />
-  <img src="demo-pics/upload.png" width="49%" alt="Upload Flow" />
+  <img src="demo-pics/dashboard.png" width="100%" alt="Dashboard" />
+  <img src="demo-pics/upload.png" width="100%" alt="Upload Flow" />
 </p>
 
 ---
@@ -161,8 +161,8 @@ flowchart TD
 > **[🖼️ VISUAL WALKTHROUGH: REGISTRATION & AUTHENTICATION]**
 
 <p align="center">
-  <img src="demo-pics/register.png" width="49%" alt="Registration" />
-  <img src="demo-pics/reg_auth.png" width="49%" alt="Registration Authentication" />
+  <img src="demo-pics/register.png" width="100%" alt="Registration" />
+  <img src="demo-pics/reg_auth.png" width="100%" alt="Registration Authentication" />
 </p>
 
 ---
