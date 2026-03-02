@@ -1,10 +1,7 @@
-# 📚 Arivagam — Deterministic RAG Engine
-
-<p align="center">
-  <img src="client/public/logo_mel.png" alt="Arivagam Logo" width="200" />
-</p>
-
-<h1 align="center">ARIVAGAM</h1>
+<h1 align="center">
+  <img src="client/public/logo_mel.png" alt="Arivagam Logo" width="60" align="center" />
+  ARIVAGAM
+</h1>
 
 <p align="center">
   <strong>Your Resource and AI, Finally in One Place.</strong>
