@@ -1,6 +1,6 @@
 <h1 align="center">
-  <img src="client/public/logo_mel.png" alt="Arivagam Logo" width="60" align="center" />
-  ARIVAGAM
+  <img src="client/public/logo_mel.png" alt="Arivagam Logo" width="80" align="center" style="vertical-align: middle; margin-right: 10px;" />
+  <span style="font-size: 64px; vertical-align: middle; font-weight: bold;">ARIVAGAM</span>
 </h1>
 
 <p align="center">
