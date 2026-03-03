@@ -2,10 +2,6 @@
   <img src="demo-pics/logo_github.png" alt="Arivagam Logo" width="800" />
 </h1>
 
-<p align="center">
-  <strong style="font-size: 1.75em;">YOUR RESOURCE AND AI, FINALLY IN ONE PLACE.</strong>
-</p>
-
 ---
 
 ## 🚀 The Hook: Zero-Hallucination Architecture
