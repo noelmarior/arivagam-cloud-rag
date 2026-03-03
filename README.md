@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="demo-pics/logo_github.png" alt="Arivagam Logo" width="800" />
+  <img src="demo-pics/logo_github.png" alt="Arivagam Logo" width="500" />
 </h1>
 
 ---
@@ -83,9 +83,10 @@ Arivagam utilizes a fully independent, custom **JWT (JSON Web Token)** authentic
 ### Authentication Flow Blueprint
 
 ```mermaid
-flowchart TD
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'textColor': '#000000', 'clusterBkg': '#ffffff', 'clusterBorder': '#000000'}}}%%
+flowchart LR
     %% User Registration
-    subgraph Registration [User Registration]
+    subgraph Registration [USER REGISTRATION]
         R1([User Registrations]) --> R2[Password Regex Validation]
         R2 --> R3[Argon2id Cryptographic Hashing]
         R3 --> R4[Generate SHA-256 Token]
@@ -93,9 +94,13 @@ flowchart TD
         R5 --> R6([User Clicks Verification Link])
         R6 --> R7[(DB: User Verified)]
     end
+```
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'textColor': '#000000', 'clusterBkg': '#ffffff', 'clusterBorder': '#000000'}}}%%
+flowchart LR
     %% User Login
-    subgraph Authentication [User Login & Authorization]
+    subgraph Authentication [USER LOGIN & AUTHORIZATION]
         A1([User Logs In]) --> A2{Verify Hash}
         A2 -->|Bcrypt Match| A3[Opportunistic Upgrade to Argon2id]
         A2 -->|Argon2id Match| A4[Generate Signed JWT]
@@ -111,9 +116,10 @@ flowchart TD
 ## 🗺 System Architecture Blueprint
 
 ```mermaid
-flowchart TD
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'textColor': '#000000', 'clusterBkg': '#ffffff', 'clusterBorder': '#000000'}}}%%
+flowchart LR
     %% Upload Pipeline
-    subgraph Upload [Upload & Ingestion Pipeline]
+    subgraph Upload [UPLOAD & INGESTION PIPELINE]
         U1([User Uploads File]) --> U2[Node.js API Gateway<br/>multer.memoryStorage]
         U2 -->|1. 202 Accepted| U3([Client UI: Optimistic Loading])
         
@@ -133,9 +139,13 @@ flowchart TD
         F1 -.-> R3[Drop Pending DB Entry]
         F1 -.-> R4[Notify Client of Failure]
     end
+```
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#ffffff', 'primaryTextColor': '#000000', 'primaryBorderColor': '#000000', 'lineColor': '#000000', 'textColor': '#000000', 'clusterBkg': '#ffffff', 'clusterBorder': '#000000'}}}%%
+flowchart LR
     %% Chat Pipeline
-    subgraph Chat [RAG Chat Pipeline]
+    subgraph Chat [RAG CHAT PIPELINE]
         C1([User Chat Query]) --> C2[Pinecone Context Retrieval]
         C2 --> C3[LLM Synthesis<br/>Gemini]
         C3 --> C4[Verbatim Extraction Engine<br/>Server-Side N-Gram Diffing]
