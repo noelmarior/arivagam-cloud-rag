@@ -1,10 +1,9 @@
 <h1 align="center">
-  <img src="client/public/logo_mel.png" alt="Arivagam Logo" width="80" align="center" style="vertical-align: middle; margin-right: 15px;" />
-  <span style="font-size: 80px; vertical-align: middle; line-height: 80px; font-weight: bold;">ARIVAGAM</span>
+  <img src="demo-pics/logo_github.png" alt="Arivagam Logo" width="120" />
 </h1>
 
 <p align="center">
-  <strong>Your Resource and AI, Finally in One Place.</strong>
+  <strong style="font-size: 1.75em;">YOUR RESOURCE AND AI, FINALLY IN ONE PLACE.</strong>
 </p>
 
 ---
