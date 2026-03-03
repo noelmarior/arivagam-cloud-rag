@@ -83,9 +83,10 @@ Arivagam utilizes a fully independent, custom **JWT (JSON Web Token)** authentic
 ### Authentication Flow Blueprint
 
 ```mermaid
-flowchart LR
+flowchart TD
     %% User Registration
     subgraph Registration [USER REGISTRATION]
+        direction LR
         R1([User Registrations]) --> R2[Password Regex Validation]
         R2 --> R3[Argon2id Cryptographic Hashing]
         R3 --> R4[Generate SHA-256 Token]
@@ -93,12 +94,10 @@ flowchart LR
         R5 --> R6([User Clicks Verification Link])
         R6 --> R7[(DB: User Verified)]
     end
-```
 
-```mermaid
-flowchart LR
     %% User Login
     subgraph Authentication [USER LOGIN & AUTHORIZATION]
+        direction LR
         A1([User Logs In]) --> A2{Verify Hash}
         A2 -->|Bcrypt Match| A3[Opportunistic Upgrade to Argon2id]
         A2 -->|Argon2id Match| A4[Generate Signed JWT]
@@ -114,9 +113,10 @@ flowchart LR
 ## 🗺 System Architecture Blueprint
 
 ```mermaid
-flowchart LR
+flowchart TD
     %% Upload Pipeline
     subgraph Upload [UPLOAD & INGESTION PIPELINE]
+        direction LR
         U1([User Uploads File]) --> U2[Node.js API Gateway<br/>multer.memoryStorage]
         U2 -->|1. 202 Accepted| U3([Client UI: Optimistic Loading])
         
@@ -136,12 +136,10 @@ flowchart LR
         F1 -.-> R3[Drop Pending DB Entry]
         F1 -.-> R4[Notify Client of Failure]
     end
-```
 
-```mermaid
-flowchart LR
     %% Chat Pipeline
     subgraph Chat [RAG CHAT PIPELINE]
+        direction LR
         C1([User Chat Query]) --> C2[Pinecone Context Retrieval]
         C2 --> C3[LLM Synthesis<br/>Gemini]
         C3 --> C4[Verbatim Extraction Engine<br/>Server-Side N-Gram Diffing]
