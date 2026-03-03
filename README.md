@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="demo-pics/logo_github.png" alt="Arivagam Logo" width="120" />
+  <img src="demo-pics/logo_github.png" alt="Arivagam Logo" width="300" />
 </h1>
 
 <p align="center">
