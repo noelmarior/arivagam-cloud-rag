@@ -189,4 +189,4 @@ The current iteration of Arivagam serves as the foundational architecture for an
 6. **Chain of Thought (CoT) UI:** Exposing the LLM’s internal reasoning structure, allowing users to visually trace exactly *how* the AI formulated an answer prior to final synthesis.
 7. **Persistent Chat Context Memory:** Shifting from isolated single-query RAG interactions to stateful database architecture, storing conversation histories in MongoDB and passing rolling recent-turns into the LLM context window for multi-turn conversational follow-ups.
 8. **Dynamic Notion-Style Dashboard:** Migrating from a static split-pane layout to a modular workspace environment featuring drag-and-drop file organization, custom tagging, and pin-able citation saving.
-9. **Mobile-Optimized Viewport:** Developing a responsive, secondary frontend framework tailored for immediate query resolution on mobile screens, functioning as a companion to the deep-research desktop interface.
+9. **Mobile-Optimized Viewport:** Developing a responsive, secondary frontend framework tailored for immediate query resolution on mobile screens, functioning as a companion to the deep-research desktop interface. 
